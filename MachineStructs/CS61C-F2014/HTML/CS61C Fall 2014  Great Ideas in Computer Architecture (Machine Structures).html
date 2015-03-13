@@ -1,0 +1,1688 @@
+<!DOCTYPE html PUBLIC "-//w3c//dtd html 4.01 transitional//en">
+<!-- saved from url=(0052)http://inst.eecs.berkeley.edu/~cs61c/fa14/#Resources -->
+<html><script type="text/javascript" src="chrome-extension://kajfghlhfkcocafkcjlajldicbikpgnp/catcher.js"><!-- script injected by Request Maker --></script><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+   <meta http-equiv="Pragma" content="no-cache">
+   
+   <title>CS61C Fall 2014: Great Ideas in Computer Architecture (Machine Structures)</title>
+   <link href="mailto:cs61c-ta@imail.eecs.berkeley.edu" rev="made">
+
+   <script type="text/javascript">
+     <!--
+	 function rollOver(imgName, imgSrc) {
+	     document[imgName].src = imgSrc;
+	 }
+       -->
+    </script>
+
+<style type="text/css"></style></head>
+
+<body bgcolor="#FFFFEF"><div id="message" class="ui-corner-all"></div>
+
+<a name="Doctop">
+<!-- 61C Logo and Navigation Stuff -->
+
+<table border="0" cellspacing="2" cellpadding="5" width="100%">
+<tbody><tr bgcolor="#000000">
+<td valign="BOTTOM" align="center"><b><font color="#FFFFFF"><font size="+2">CS 61C</font></font></b></td>
+<td valign="BOTTOM"><font color="#FFFFFF"><font size="+0">
+      Great Ideas in Computer Architecture (Machine Structures).
+<!-- SEMESTER UPDATE -->
+Fall 2014, UC Berkeley</font></font></td>
+</tr>
+<tr bgcolor="#EEEDD0">
+  <td valign="TOP" width="378"><img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/P&H.jpg" height="162" width="130" alt="P&amp;H"><img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/K&R.jpg" height="162" width="124" alt="K&amp;R"><img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/WSC.jpg" height="162" width="124" alt="WSC"></td>
+<td valign="BOTTOM">
+<font size="+3">&nbsp;</font><center>
+<!-- SEMESTER UPDATE -->
+  <font size="+3">CS61C Fall 2014<br>MWF 3-4pm 150 Wheeler</font>
+</center><br>
+<hr>
+
+<div align="center">
+	<a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#News">News</a> |
+	<a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Calendar">Calendar</a> |
+  <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#OHSchedule">Office Hours</a> |
+	<a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Schedule">Schedule</a> |
+	<a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">Staff</a> |
+	<a href="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures).html">Resources</a> |
+	<a href="https://hkn.eecs.berkeley.edu/exams/course/CS/61C">Old Exams</a>
+</div>
+
+</td>
+</tr>
+</tbody></table>
+<!-- End 61C Logo and navigation Stuff -->
+
+<br>
+<hr>
+<br>
+
+<!-- Begin News -->
+<!-- Begin Announcements -->
+</a><a name="News"></a>
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="2">
+<tbody><tr><td bgcolor="#000000">
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="10">
+<tbody><tr><td bgcolor="#EEEDD0">
+<h2>Timely Announcements</h2>
+
+<!-- News Table -->
+<table border="0" cellpadding="10" cellspacing="0">
+
+<tbody><tr valign="top">
+    
+	</tr><tr valign="top">
+	  <td><strong>2014-08-20</strong></td>
+	  <td><strong>Welcome to CS61C Fall 2014!</strong> 
+      <p> <!-- TODO: update piazza link -->
+      Some important announcements will be placed here and many will be made on <a href="https://piazza.com/berkeley/fall2014/cs61c">Piazza</a>. Please check both often, as content will be updated frequently.</p>
+	  </td>
+	</tr>
+
+	<tr valign="top">
+	  <td><strong>2014-08-27</strong></td>
+	  <td><strong>First Week Labs</strong> 
+	    <p>
+	      There <i><b>will</b></i> be labs during the first week of instruction. If you have a Wednesday lab, stay tuned for more information - you will need to attend a lab on Thursday or Friday for the first week. See Piazza for more information.
+            </p>
+	  </td>
+  </tr>
+<tr valign="top">
+	  <td><strong>2014-08-31</strong></td>
+	  <td><strong>Grading Breakdown</strong> 
+	    <p>
+      For future reference, the grade breakdown for the course is summarized <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/course_grading.pdf">here</a>. The grading scale is available <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/grade_scale.pdf">here</a>.
+            </p>
+	  </td>
+  </tr>
+
+
+
+<!--	<tr valign="top">
+	  <td><strong>2014-01-26</strong></td>
+	  <td><strong>Screencast Link</strong> 
+	    <p>
+	      If you're having trouble finding the lecture screencasts, you can find them <a href="http://webcast.berkeley.edu/playlist#c,s,Spring_2014,-XXv-cvA_iDHtKXLFJbDG-i6L9oDr5X9">here</a>.
+            </p>
+	  </td>
+  </tr> -->
+
+<!--	<tr valign="top">
+	  <td><strong>2014-01-26</strong></td>
+	  <td><strong>Grading Breakdown and Scale</strong> 
+	    <p>
+	      For future reference, the grade breakdown for the course is summarized <a href="grade_slide.pdf">here</a>. The scale is available <a href="grade_scale.pdf">here</a>.
+            </p>
+	  </td>
+  </tr> -->
+</tbody></table>
+<!-- End News Table -->
+
+<!-- <p><a href="old-news.html"><font size="+2">Old News </font></a></p> -->
+
+</td></tr>
+</tbody></table>
+
+</td></tr>
+</tbody></table>
+<!-- end announcements -->
+
+<!-- End -->
+
+<br>
+<hr>
+<br>
+
+
+<!-- Begin Lecture Reading and Quiz Schedule -->
+<a name="Calendar"></a>
+
+<!-- TODO: php/cgi to show lecture links automatically -->
+
+<!-- Begin Lecture Reading and Quiz Schedule -->
+<table align="center" border="0" cellpadding="2" cellspacing="0" width="100%">
+<tbody><tr><td bgcolor="#000000">
+<div align="center">
+  <center>
+
+<table style="border-collapse: collapse;" border="0" bordercolor="#111111" cellpadding="10" cellspacing="0" width="100%">
+<tbody><tr><td bgcolor="#eeedd0">
+<h2>Lecture, Reading, and Assignment Calendar</h2>
+
+<p>
+  <b>Policy on Assignments and Independent Work.</b>
+  Unless explicitly stated otherwise, all homeworks and projects are to be <b><i>YOUR</i></b> work and your work <b><i>ALONE</i></b>.
+  Collaboration in CS61C is limited to debugging. You should not discuss ideas/approaches or pseudocode with other students. What you hand in must be entirely your own work.
+  It is <b><i>NOT</i></b> acceptable to copy solutions from other students or to copy (or start your) solutions from the Web.
+  We have tools and methods, developed over many years, for detecting this.
+  You <b><i>WILL</i></b> be caught, and the penalties <b><i>WILL</i></b> be severe.
+  These include, at minimum:
+  </p><ul>
+    <li>A letter to your university record documenting the incidence of cheating.
+    </li><li>An automatic <b>F</b> in the course for both you and the enabler/giver of the assignment.
+  </li></ul>
+  Both the giver and receiver are equally culpable and suffer equal penalties.
+  The full policy on collaboration is available <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/cheating_policy.pdf">here</a>.
+<p></p>
+
+<table style="border-collapse: collapse; width: 100%;" border="2" bordercolor="#111111" cellpadding="4" cellspacing="0">
+ <!-- Column Headers -->
+ <tbody>
+     <tr bgcolor="#b0b0b0">
+
+       <th width="50"><b>Wk</b></th>
+       <th><b>Date</b></th>
+       <th><b>Lecture Topic</b></th>
+
+       <th><b>Reading</b></th>
+       <th><b>Section</b></th>
+
+       <th><b>Lab</b></th>
+       <th><b>Assignment Due<br>
+</b></th>
+</tr>
+
+<!-- Week 1 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="1" style="text-align: center;" bgcolor="#e0e0e0">1<br></td>
+
+  <td bgcolor="#e0e0e0">08/29 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/01">Course Intro: Great Ideas in Computer Architecture</a> (Dan/Miki)</td>
+      <td bgcolor="#e0e0e0">None</td>
+
+  <td rowspan="1" bgcolor="#e0e0e0">
+    None
+  </td>
+  <td rowspan="1" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/00">Lab 0: Introductions</a>
+  </td>
+  <td rowspan="1" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/hw/00/hw0.pdf">HW0: Introduce Yourself</a>
+    <br>Due Next Week in Lab (ie. 09/{3, 4, 5})
+  </td>
+</tr>
+
+<!-- Week 2 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">2<br></td>
+
+  <td bgcolor="#e0e0e0">09/01 M</td>
+  <td colspan="2" bgcolor="#ffffd0"><b>Administrative Holiday (Labor Day)</b></td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/00">Section 0: Number Representation</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/01">Lab 1: Number Representation<br></a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/hw/01/hw1.html">HW1: C and Number Rep</a>
+    <br>Due 09/07 @ 23:59:59
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/03 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/02">Number Representation</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.4<br>(5th) P&amp;H: 2.4<br><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/binaryslides.pdf">Binary slides</a></td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/05 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/03">C Intro: Basics</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">B. Harvey's <a href="http://inst.eecs.berkeley.edu/~cs61c/resources/HarveyNotesC1-3.pdf">Intro to C</a>
+      <br>K&amp;R Ch. 1-4</td>
+</tr>
+
+<!-- Week 3 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">3<br></td>
+
+  <td bgcolor="#e0e0e0">09/08 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/04">C Intro: Pointers, Arrays, Strings</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">K&amp;R Ch. 5-6<br>
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/04ref/">C Reference Slides</a></td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/01">Section 1: C Basics</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/02">Lab 2: C<br></a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/hw/02/hw2.html">HW2: rgrep</a>
+    <br>Due 09/14 @ 23:59:59
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/10 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/05">MIPS Intro</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.1-2.3<br>(5th) P&amp;H: 2.1-2.3</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/12 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/06">MIPS lw, sw, Decisions I</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.9, 2.10 (only p.128-129) <br> (5th) P&amp;H: 2.9, 2.10 (only p.111-113)</td>
+</tr>
+
+<!-- Week 4 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">4<br></td>
+
+  <td bgcolor="#e0e0e0">09/15 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/07">MIPS Decisions II</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.6, 2.7, 3.2<br>(5th) P&amp;H: 2.6, 2.7, 3.2</td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/02">Section 2: MIPS</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/03">Lab 3: C Pointers and GDB<br></a>
+  </td>
+  <td rowspan="2" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/hw/03-1">HW3 Part 1: MIPS</a>
+    <br>Due 09/17 @ 23:59:59
+  </td>
+
+
+
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/17 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/08">MIPS Instruction Format I</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.5, 2.10<br>(5th) P&amp;H: 2.5, 2.10</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/19 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/09">MIPS Instruction Format II</a> (Miki)</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/09/2014Fa-CS61C-L09-ML-InstructionRepII-bonus-only.pdf">Bonus Slides</a></td>
+  <td rowspan="6" bgcolor="#e0e0e0">
+    Project 1: C and MIPS
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/01">Part 1 Due 09/24 @ 23:59:59</a>
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/01#part-2">Part 2 Due 10/01 @ 23:59:59</a>
+  </td>
+
+
+
+
+</tr>
+
+<!-- Week 5 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">5<br></td>
+
+  <td bgcolor="#e0e0e0">09/22 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/10">MIPS Procedures I</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.8 (p. 112-118)<br>(5th) P&amp;H: 2.8 (p. 96-102)</td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/03">Section 3: MIPS Control Flow and Instruction Formats</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/04">Lab 4: Memory Management and Assembly Practice<br></a>
+  </td>
+  
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/24 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/11">MIPS Procedures II &amp; Logic Ops</a> (Dan)</td>
+      <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.8, B.6<br>(5th) P&amp;H: 2.8, A.6<br><!--<a href="lec/11/2014Sp-CS61C-L11-dg-proceduresII-logicalops-bonus-only.pdf">-->Bonus slides<!--</a>--></td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">09/26 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/12">Caches I</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 5.1<br>(5th) P&amp;H: 5.1, 5.2</td>
+</tr>
+
+<!-- Week 6 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="5" style="text-align: center;" bgcolor="#e0e0e0">6<br></td>
+
+  <td bgcolor="#e0e0e0">09/29 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/13">Caches II</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 5.2 (p. 457-470)<br> (5th) P&amp;H: 5.3</td>
+
+  <td rowspan="5" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/04">Section 4: MIPS Procedures</a>
+  </td>
+  <td rowspan="5" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/05">Lab 5: Function Calls and Pointers in MIPS<br></a>
+  </td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/01 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/14">Caches III</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 1.4, 5.3, 5.5<br>(5th) P&amp;H: 1.6, 5.4, 5.8<br> <a href="http://inst.eecs.berkeley.edu/~cs61c/resources/caches.pdf">Cache Flowchart</a></td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/03 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/15">Floating Point</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 3.5, 3.8<br>(5th) P&amp;H: 3.5. 3.9<br><a href="http://www.h-schmidt.net/FloatApplet/IEEE754.html">IEEE 754 Simulator</a></td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/hw/03-2">HW3 Part 2: FP, Caches</a>
+    <br>Due 10/05 @ 23:59:59
+  </td>
+
+
+
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/04 Sa</td>
+  <td colspan="2" bgcolor="#ffd080"><!--<a href="lec/15">--><strong><font color="red">1-4pm, 2050 VLSB: HKN Midterm Review Session</font></strong><!--</a>--></td>
+</tr>
+
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/05 Su</td>
+  <td colspan="2" bgcolor="#ffd080"><!--<a href="lec/15">--><strong><font color="red">1-3pm, 2050 VLSB: TA Midterm Part 1 Review Session</font></strong><!--</a>--></td>
+</tr>
+
+
+
+<!-- Week 7 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="5" style="text-align: center;" bgcolor="#e0e0e0">7<br></td>
+  <td bgcolor="#e0e0e0">10/06 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/16">Compilation, Assembly, Linking, and Loading</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.12, B.1-B.4<br>(5th) P&amp;H: 2.12, A.1-A.4</td>
+
+  <td rowspan="5" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/05">Section 5: Caches</a>
+  </td>
+  <td rowspan="5" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/06">Lab 6: Cache Blocking<br></a>
+  </td>
+  <td rowspan="5" bgcolor="#e0e0e0">
+      <!--<a href="hw/03">-->[MT Studying]<!--</a>-->
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/08 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/17">Datacenters and Cloud Computing</a> (Dan)</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/WSCBarrosoHolzle.pdf">Warehouse-Scale Computers:</a>
+    Ch 1, Ch 3, 5.1-5.3</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/10 F</td>
+  <td colspan="2" bgcolor="#ffd080"><strong><font color="red">Midterm Part 1 (in-class)</font></strong></td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/10 F</td>
+  <td colspan="2" bgcolor="#ffd080"><strong><font color="red">4-5pm, Wheeler Auditorium: Midterm Part 1 Walkthrough (optional)</font></strong></td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/12 Su</td>
+  <td colspan="2" bgcolor="#ffd080"><!--<a href="lec/15">--><strong><font color="red">1-3pm, 155 Dwinelle: TA Midterm Part 2 Review Session</font></strong><!--</a>--></td>
+</tr>
+
+
+
+
+<!-- Week 8 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="4" style="text-align: center;" bgcolor="#e0e0e0">8<br></td>
+
+  <td bgcolor="#e0e0e0">10/13 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/18">MapReduce</a> (Dan)</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/WSCBarrosoHolzle.pdf">Warehouse-Scale Computers:</a> Ch 2.4</td>
+
+  <td rowspan="4" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/06">Section 6: Floating Point, C.A.L.L.</a>
+  </td>
+  <td rowspan="4" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/07">Lab 7: MapReduce, Hadoop, and Spark<br></a>
+  </td>
+  <td rowspan="4" bgcolor="#e0e0e0">
+      <!--<a href="hw/03">-->[MT Studying]<!--</a>-->
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/15 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/19">Flynn Taxonomy, Intel SIMD Instructions</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 1.5, 1.6, 7.1, 7.2, 7.4, 7.6<br>(5th) P&amp;H: 1.7, 1.8, 6.1, 6.2, 6.3, 6.7</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/17 F</td>
+  <td colspan="2" bgcolor="#ffd080"><strong><font color="red">Midterm Part 2 (in-class)</font></strong></td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/17 F</td>
+  <td colspan="2" bgcolor="#ffd080"><strong><font color="red">4-5pm, Wheeler Auditorium: Midterm Part 2 Walkthrough (optional)</font></strong></td>
+</tr>
+
+<!-- Week 9 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">9<br></td>
+
+  <td bgcolor="#e0e0e0">10/20 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/20">Intel SIMD Continued, Thread Level Parallelism</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 7.3, 5.8<br>(5th) P&amp;H: 6.5, 5.10</td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/07">Section 7: MapReduce and WSC</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/08">Lab 8: Intel SIMD<br></a>
+  </td>
+  <td rowspan="6" bgcolor="#e0e0e0">
+      Project 2: MapReduce
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/02">Part 1 Due 10/27 @ 23:59:59</a>
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/02/index2.html">Part 2 Due 11/02 @ 23:59:59</a>
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/22 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/21">Thread Level Parallelism</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 2.11<br>(5th) P&amp;H: 2.11</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/24 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/22">Thread Level Parallelism, OpenMP</a> (Miki)</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/OpenMP3.0-SummarySpec.pdf">OpenMP summary card</a></td>
+</tr>
+
+<!-- Week 10 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">10<br></td>
+
+  <td bgcolor="#e0e0e0">10/27 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/23">Intro to Synchronous Digital Systems</a> (Miki)</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/sds.pdf">SDS Handout</a></td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/08">Section 8: Cache Coherence and Synchronization</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/09">Lab 9: Thread Parallelism<br></a>
+  </td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/29 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/24">State and State Machines</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 4.2,  C.3-C.6 (on CD)
+    <br>(5th) P&amp;H: 4.2,  B.3-B.6
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/state.pdf">State Handout</a>
+</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">10/31 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/25">Combinational Logic</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: C.2-C.3 (on CD)<br> (5th) P&amp;H: B.2-B.3
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/boolean.pdf">Logic Handout</a></td>
+</tr>
+
+<!-- Week 11 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">11<br></td>
+
+  <td bgcolor="#e0e0e0">11/03 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/26">Combinational Logic Blocks</a> (Dan)</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/blocks.pdf">Blocks Handout</a></td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/09">Section 9: Logic and SDS</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/10">Lab 10: Logisim<br></a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/hw/04">HW4: Digital Design and FSMs</a>
+    <br>Due 11/09 @ 23:59:59
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/05 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/27">Single Cycle CPU Datapath</a> (Shreyas)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 4.1, 4.3<br>(5th) P&amp;H: 4.1, 4.3</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/07 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/28">Single Cycle CPU Control</a> (Sagar)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 4.4<br>(5th) P&amp;H: 4.4</td>
+</tr>
+
+<!-- Week 12 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">12<br></td>
+
+  <td bgcolor="#e0e0e0">11/10 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/29">Single Cycle CPU Control II</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 4.5, 4.6<br>(5th) P&amp;H: 4.5, 4.6</td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/10">Section 10: Single Cycle Datapath</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/11">Lab 11: More Logisim<br></a>
+  </td>
+  <td rowspan="6" bgcolor="#e0e0e0">
+      Project 3: Performance Optimization
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/03/part1">Part 1 Due 11/18 @ 23:59:59</a>
+    <br><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/03/part2">Part 2 Due 11/23 @ 23:59:59</a>
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/12 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/30">ILP: Pipelining</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 4.7, 4.8<br>(5th) P&amp;H: 4.7, 4.8</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/14 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/31">ILP: Pipelining Hazards</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 4.10, 4.11<br>(5th) P&amp;H: 4.10, 4.11</td>
+</tr>
+
+
+<!-- Week 13 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">13<br></td>
+
+  <td bgcolor="#e0e0e0">11/17 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/32">ILP: Multiple Instruction Issue</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 5.4<br>(5th) P&amp;H: 5.7</td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/11">Section 11: Pipelining</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/12">Lab 12: Project 4 Prelude<br></a>
+  </td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/19 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/33">Virtual Memory I</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 5.10-5.12<br>(5th) P&amp;H: 5.13, 5.15, 5.16</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/21 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/34">Virtual Memory II</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">None</td>
+</tr>
+
+<!-- Week 14 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">14<br></td>
+
+  <td bgcolor="#e0e0e0">11/24 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/35">Virtual Memory III</a> (Miki)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 6.1, 6.5
+    <br>(5th) P&amp;H: <a href="http://booksite.elsevier.com/9780124077263/downloads/advance_contents_and_appendices/section_6.9.pdf">6.9</a> (only p.1-4) </td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/12">Section 12: Virtual Memory</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      Lab: None
+  </td>
+
+  <td rowspan="6" bgcolor="#e0e0e0">
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/03/competition">Project 3: Performance Optimization
+    (Optional) </a>
+    <br>Due 12/04 @ 11:59:59<br>
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/projs/04">Project 4: Processor</a>
+    <br>Due 12/07 @ 23:59:59
+  </td>
+
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/26 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/36">I/O: Basics and Interrupts</a> (Dan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 6.6, 4.9
+    <br>(5th) P&amp;H: <a href="http://booksite.elsevier.com/9780124077263/downloads/advance_contents_and_appendices/section_6.9.pdf">6.9</a> (only p.4-10), 4.9</td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">11/28 F</td>
+  <td colspan="2" bgcolor="#ffffd0"><strong>Administrative Holiday (Thanksgiving)</strong></td>
+</tr>
+
+
+<!-- Week 15 -->
+
+<tr bgcolor="#f0f0f0">
+  <td rowspan="3" style="text-align: center;" bgcolor="#e0e0e0">15<br></td>
+
+  <td bgcolor="#e0e0e0">12/01 M</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/37">I/O: Disks</a> (Rohan)</td>
+  <td bgcolor="#e0e0e0">(4th) P&amp;H: 6.2-6.4, 6.9
+      <br> (5th) 5.2, 5.5 (only p.418-419), 5.11
+      <br><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/Patterson88.pdf">Berkeley RAID Paper</a>
+  </td>
+
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/disc/13">Section 13: Virtual Memory II, I/O</a>
+  </td>
+  <td rowspan="3" bgcolor="#e0e0e0">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/labs/13">Lab 13: Virtual Memory<br></a>
+  </td>
+  </tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">12/03 W</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/38">I/O: Networks</a> (Dan)</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/resources/btb_appendix.pdf">"Blown to Bits" Appendix A: The Internet as System and Spirit</a></td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="#e0e0e0">12/05 F</td>
+  <td bgcolor="#e0e0e0"><a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/lec/39">Summary and Goodbye</a> (Dan/Miki)</td>
+  <td bgcolor="#e0e0e0">None</td>
+</tr>
+
+
+
+<!-- RRR Week, Final Exam -->
+
+<tr bgcolor="#f0f0f0">
+ 
+    <td rowspan="2" style="text-align: center;" bgcolor="#e0e0e0">RRR<br></td>
+  <td bgcolor="#e0e0e0">12/8 M</td>
+  <td colspan="5" bgcolor="#ffd080"><strong><font color="red"><b>TA Final Exam Review: 12:00pm-3:00pm, 155 Dwinelle</b></font></strong></td>
+      
+
+      </tr>
+      <tr>
+                <td bgcolor="#e0e0e0">12/12 F</td>
+  <td colspan="5" bgcolor="#ffd080"><strong><font color="red"><b>HKN Final Exam Review: 12:30pm-2:30pm, Anna Head Alumnae Hall</b></font></strong></td>
+
+      </tr>
+<tr bgcolor="#f0f0f0">
+
+    <td rowspan="1" style="text-align: center;" bgcolor="#e0e0e0">Finals<br></td>
+  <td bgcolor="#e0e0e0">12/16 Tu</td>
+  <td colspan="5" bgcolor="#ffd080"><strong><font color="red"><b>Final Exam: 7:00pm-10:00pm, Wheeler Auditorium</b>
+        <!-- <br>(<a href="cs61c_sp13_final.pdf">Final</a>) (<a href="cs61c_sp13_final_answers.pdf">Answers</a>) (<a href="cs61c_sp13_final_rubric.pdf">Rubric</a>) --></font></strong></td>
+
+</tr>
+
+
+<!-- Week N
+<tr bgcolor="#f0f0f0">
+  <td align="center" rowspan="3" bgcolor="e0e0e0">N</td>
+	<td bgcolor="e0e0e0">Date1 M</td>
+	  <td bgcolor="e0e0e0">
+	    Lecture M
+	  </td>
+	 <td bgcolor="e0e0e0">
+			ReadingM
+		</td>
+
+
+		<td rowspan="3" bgcolor="e0e0e0">
+	    Quiz N
+	  </td>
+	  <td rowspan="3" bgcolor="e0e0e0">
+	    Lab N: Title
+	  </td>
+	  <td rowspan="3" bgcolor="e0e0e0">
+	    <p>HWN-1</p>
+	    <p>Due Wednesday</p>
+	  </td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+<td bgcolor="e0e0e0">Date2 W</td>
+  <td bgcolor="e0e0e0">
+    Lecture W
+  </td>
+  <td bgcolor="e0e0e0">
+    ReadingW
+  </td>
+</tr>
+
+<tr bgcolor="#f0f0f0">
+  <td bgcolor="e0e0e0">Date3 F</td>
+
+  <td bgcolor="e0e0e0">
+    Lecture F
+  </td>
+
+  <td bgcolor="e0e0e0">
+    ReadingF
+  </td>
+</tr>
+-->
+
+<!-- End -->
+
+</tbody></table></td></tr></tbody></table></center></div></td></tr></tbody></table>
+<!-- End -->
+
+<!-- End -->
+
+
+
+  
+
+
+
+<br>
+<hr>
+<br>
+
+
+<a name="OHSchedule"></a>
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="2">
+<tbody><tr><td bgcolor="#000000">
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="10">
+<tbody><tr><td bgcolor="#EEEDD0">
+
+
+<h2>Office Hours Schedule</h2>
+<div align="center"><div style="width: 97%;height:875px;overflow:hidden;">
+<!-- Begin Lab/discussion schedule> -->
+
+
+
+  
+  <title>Demo 4 - jQuery Week Calendar</title>
+
+  <link rel="stylesheet" type="text/css" href="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/jquery-ui-1.8.11.custom.css">
+  <link rel="stylesheet" type="text/css" href="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/jquery.weekcalendar.css">
+  <style type="text/css">
+/*  body {
+    font-family: "Lucida Grande",Helvetica,Arial,Verdana,sans-serif;
+    margin: 0;
+  } */
+
+  h1 {
+    margin: 0 0 1em;
+    padding: 0.5em 0.5em 0;
+  }
+
+  p.description {
+    font-size: 0.8em;
+    padding: 1em;
+    top: 3.2em;
+    margin-right: 400px;
+  }
+
+  #message {
+    font-size: 0.7em;
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    width: 350px;
+    display: none;
+    padding: 1em;
+    background: #ffc;
+    border: 1px solid #dda;
+  }
+  </style>
+
+  <script type="text/javascript" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/jquery-1.4.4.min.js"></script>
+  <script type="text/javascript" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/jquery-ui-1.8.11.custom.min.js"></script>
+
+  <script type="text/javascript" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/date.js"></script>
+  <script type="text/javascript" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/jquery.weekcalendar.js"></script>
+
+  <script type="text/javascript">
+  var year = new Date().getFullYear();
+  var month = new Date().getMonth();
+  var day = new Date().getDate();
+
+  // hacky setup for the weekly schedule when we have lots of overlaps
+  // here, we can just define json events
+
+  var eventData = {
+events : [
+         // Dan
+         {'id':1, 'start': new Date(2010, 3, 28, 10), 'end': new Date(2010, 3, 28, 11),'title':'OH - Dan <br> 777 Soda'},
+         // Miki
+         {'id':1, 'start': new Date(2010, 3, 29, 14, 30), 'end': new Date(2010, 3, 29, 15, 30),'title':'OH - Miki <br> 506 Cory'},
+         // Riyaz
+         {'id':1, 'start': new Date(2010, 3, 26, 10), 'end': new Date(2010, 3, 26, 11),'title':'OH - Riyaz <br> 330 Soda'},
+         // Fred
+         {'id':1, 'start': new Date(2010, 3, 28, 12), 'end': new Date(2010, 3, 28, 14),'title':'OH - Fred <br> 330 Soda'},
+         // David
+         {'id':1, 'start': new Date(2010, 3, 26, 12), 'end': new Date(2010, 3, 26, 13),'title':'OH - David <br> 283E Soda'},
+         {'id':1, 'start': new Date(2010, 3, 29, 10), 'end': new Date(2010, 3, 29, 11),'title':'OH - David <br> 651 Soda'},
+         // Rohan
+         {'id':1, 'start': new Date(2010, 3, 26, 11), 'end': new Date(2010, 3, 26, 12),'title':'OH - Rohan <br> 330 Soda'},
+         {'id':1, 'start': new Date(2010, 3, 26, 14), 'end': new Date(2010, 3, 26, 15),'title':'OH - Rohan <br> 330 Soda'},
+         // Roger
+         {'id':1, 'start': new Date(2010, 3, 30, 16), 'end': new Date(2010, 3, 30, 18),'title':'OH - Roger <br> 330 Soda'},
+         // William
+         {'id':1, 'start': new Date(2010, 3, 28, 9), 'end': new Date(2010, 3, 28, 10),'title':'OH - William <br> 330 Soda'},
+         {'id':1, 'start': new Date(2010, 3, 28, 14), 'end': new Date(2010, 3, 28, 15),'title':'OH - William <br> 330 Soda'},
+         // Kevin
+         {'id':1, 'start': new Date(2010, 3, 27, 9), 'end': new Date(2010, 3, 27, 10),'title':'OH - Kevin <br> 330 Soda'},
+         {'id':1, 'start': new Date(2010, 3, 27, 12), 'end': new Date(2010, 3, 27, 13),'title':'OH - Kevin <br> 283E Soda'},
+         // Jay
+         {'id':1, 'start': new Date(2010, 3, 27, 13), 'end': new Date(2010, 3, 27, 14),'title':'OH - Jay <br> 283E Soda'},
+         {'id':1, 'start': new Date(2010, 3, 29, 13), 'end': new Date(2010, 3, 29, 14),'title':'OH - Jay <br> 283E Soda'},
+         // Sagar
+         {'id':1, 'start': new Date(2010, 3, 30, 14), 'end': new Date(2010, 3, 30, 15),'title':'OH - Sagar <br> 611 Soda'},
+         // Matthew
+         {'id':1, 'start': new Date(2010, 3, 27, 16), 'end': new Date(2010, 3, 27, 17),'title':'OH - Matthew <br> 283E Soda'},
+         {'id':1, 'start': new Date(2010, 3, 28, 16), 'end': new Date(2010, 3, 28, 17),'title':'OH - Matthew <br> 283E Soda'},
+         // Alex
+         {'id':1, 'start': new Date(2010, 3, 26, 16), 'end': new Date(2010, 3, 26, 17),'title':'OH - Alex <br> 504 Cory'},
+         // Jeffrey
+         {'id':1, 'start': new Date(2010, 3, 29, 11), 'end': new Date(2010, 3, 29, 12),'title':'OH - Jeffrey <br> 283E Soda'},
+         // Shreyas
+         {'id':1, 'start': new Date(2010, 3, 26, 17), 'end': new Date(2010, 3, 26, 18),'title':'OH - Shreyas <br> 651 Soda'},
+         {'id':1, 'start': new Date(2010, 3, 27, 14, 30), 'end': new Date(2010, 3, 27, 15, 30),'title':'OH - Shreyas <br> 283E Soda'},
+         // Andrew
+         {'id':1, 'start': new Date(2010, 3, 28, 18), 'end': new Date(2010, 3, 28, 20),'title':'OH - Andrew <br> 611 Soda'},
+
+
+
+
+
+
+
+
+        ]
+  };
+
+  $(document).ready(function() {
+    $('#calendar').weekCalendar({
+      data: eventData,
+      date: new Date(2010, 3, 28),
+      timeslotsPerHour: 2,
+      allowCalEventOverlap: true,
+      overlapEventsSeparate: true,
+      totalEventsWidthPercentInOneColumn : 100,
+      businessHours: {start: 8, end: 22, limitDisplay: true},
+      buttons: false, 
+      readonly: true,
+      allowEventCreation: true,
+      showHeader: false,
+      timeslotHeight: 30,
+
+
+      height: function($calendar) {
+        return $(window).height() - $('h1').outerHeight(true);
+      },
+      eventRender: function(calEvent, $event) {
+        if (calEvent.end.getTime() < new Date().getTime()) {
+          $event.css('backgroundColor', '#aaa');
+          $event.find('.time').css({
+            backgroundColor: '#999',
+            border:'1px solid #888'
+          });
+        }
+      },
+/*      eventNew: function(calEvent, $event) {
+        displayMessage('<strong>Added event</strong><br/>Start: ' + calEvent.start + '<br/>End: ' + calEvent.end);
+        alert('You\'ve added a new event. You would capture this event, add the logic for creating a new event with your own fields, data and whatever backend persistence you require.');
+      },
+      eventDrop: function(calEvent, $event) {
+        displayMessage('<strong>Moved Event</strong><br/>Start: ' + calEvent.start + '<br/>End: ' + calEvent.end);
+      },
+      eventResize: function(calEvent, $event) {
+        displayMessage('<strong>Resized Event</strong><br/>Start: ' + calEvent.start + '<br/>End: ' + calEvent.end);
+      },
+      eventClick: function(calEvent, $event) {
+        displayMessage('<strong>Clicked Event</strong><br/>Start: ' + calEvent.start + '<br/>End: ' + calEvent.end);
+      },
+      eventMouseover: function(calEvent, $event) {
+        displayMessage('<strong>Mouseover Event</strong><br/>Start: ' + calEvent.start + '<br/>End: ' + calEvent.end);
+      },
+      eventMouseout: function(calEvent, $event) {
+        displayMessage('<strong>Mouseout Event</strong><br/>Start: ' + calEvent.start + '<br/>End: ' + calEvent.end);
+      },
+      noEvents: function() {
+        displayMessage('There are no events for this week');
+      } */
+    });
+
+    function displayMessage(message) {
+      $('#message').html(message).fadeIn();
+    }
+
+    $('<div id="message" class="ui-corner-all"></div>').prependTo($('body'));
+
+    document.getElementById("wc-day-col-head1").innerHTML = "Monday";
+    document.getElementById("wc-day-col-head2").innerHTML = "Tuesday";
+    document.getElementById("wc-day-col-head3").innerHTML = "Wednesday";
+    document.getElementById("wc-day-col-head4").innerHTML = "Thursday";
+    document.getElementById("wc-day-col-head5").innerHTML = "Friday";
+
+  });
+  </script>
+
+
+  <div id="calendar"><div class="ui-widget wc-container"><div class="ui-widget-content wc-header"><table><tbody><tr><td class="wc-time-column-header"></td><td class="wc-day-column-header wc-day-1" id="wc-day-col-head1">Monday</td><td class="wc-day-column-header wc-day-2" id="wc-day-col-head2">Tuesday</td><td class="wc-day-column-header wc-day-3" id="wc-day-col-head3">Wednesday</td><td class="wc-day-column-header wc-day-4" id="wc-day-col-head4">Thursday</td><td class="wc-day-column-header wc-day-5" id="wc-day-col-head5">Friday</td><td class="wc-scrollbar-shim" style="width: 0px;"></td></tr></tbody></table></div><div class="wc-scrollable-grid" style="height: 1000px;"><table class="wc-time-slots"><tbody><tr class="wc-grid-row-timeslot"><td class="wc-grid-timeslot-header"></td><td colspan="5"><div class="wc-no-height-wrapper wc-time-slot-wrapper"><div class="wc-time-slots"><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div></div></div></td></tr><tr class="wc-grid-row-events"><td class="wc-grid-timeslot-header"><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">8<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">9<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">10<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">11<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">12<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">1<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">2<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">3<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">4<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">5<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">6<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">7<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">8<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">9<span class="wc-am-pm">PM</span></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-1"><div class="wc-full-height-column wc-day-column-inner day-1" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 120px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Riyaz <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 240px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - David <br> 283E Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Rohan <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 360px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Rohan <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Alex <br> 504 Cory</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 540px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Shreyas <br> 651 Soda</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-2"><div class="wc-full-height-column wc-day-column-inner day-2" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 60px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Kevin <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 240px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Kevin <br> 283E Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Jay <br> 283E Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Matthew <br> 283E Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 390px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Shreyas <br> 283E Soda</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-3"><div class="wc-full-height-column wc-day-column-inner day-3" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 120px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Dan <br> 777 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 240px; height: 120px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Fred <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 60px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - William <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 360px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - William <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Matthew <br> 283E Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 600px; height: 120px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Andrew <br> 611 Soda</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-4"><div class="wc-full-height-column wc-day-column-inner day-4" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 390px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Miki <br> 506 Cory</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 120px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - David <br> 651 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Jay <br> 283E Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Jeffrey <br> 283E Soda</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-5"><div class="wc-full-height-column wc-day-column-inner day-5" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 120px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Roger <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 360px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">OH - Sagar <br> 611 Soda</div></div></div></td></tr></tbody></table></div></div></div>
+
+
+ 
+<!-- End Lab/Discussion Schedule -->
+</div></div>
+</td></tr></tbody></table></td></tr></tbody></table>
+
+
+<br>
+<hr>
+<br>
+
+<a name="Schedule"></a>
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="2">
+<tbody><tr><td bgcolor="#000000">
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="10">
+<tbody><tr><td bgcolor="#EEEDD0">
+
+
+<h2>Weekly Schedule</h2>
+<div align="center"><div style="width: 97%;height:875px;overflow:hidden;">
+<!-- Begin Lab/discussion schedule> -->
+
+  <script type="text/javascript">
+  var year = new Date().getFullYear();
+  var month = new Date().getMonth();
+  var day = new Date().getDate();
+
+  // hacky setup for the weekly schedule when we have lots of overlaps
+  // here, we can just define json events
+
+  var eventDatasched = {
+events : [
+        // lecture
+        {'id':1, 'start': new Date(2010, 3, 26, 15, 00), 'end': new Date(2010, 3, 26, 16, 00),'title':'Lecture <br> Wheeler Auditorium'},
+        {'id':1, 'start': new Date(2010, 3, 28, 15, 00), 'end': new Date(2010, 3, 28, 16, 00),'title':'Lecture <br> Wheeler Auditorium'},
+        {'id':1, 'start': new Date(2010, 3, 30, 15, 00), 'end': new Date(2010, 3, 30, 16, 00),'title':'Lecture <br> Wheeler Auditorium'},
+
+        // sections
+        // TODO clean this up once changes reflect on schedule.berkeley
+        {'id':1, 'start': new Date(2010, 3, 26, 17), 'end': new Date(2010, 3, 26, 18),'title':'DIS 111 - Andrew <br> 4 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 26, 18), 'end': new Date(2010, 3, 26, 19),'title':'DIS 112 - Riyaz <br> 2 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 26, 19), 'end': new Date(2010, 3, 26, 20),'title':'DIS 113 - Andrew <br> 2 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 9), 'end': new Date(2010, 3, 27, 10),'title':'DIS 114 - David <br> 75 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 10), 'end': new Date(2010, 3, 27, 11),'title':'DIS 115 - Fred <br> 85 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 13), 'end': new Date(2010, 3, 27, 14),'title':'DIS 116 - Sagar <br> 71 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 14), 'end': new Date(2010, 3, 27, 15),'title':'DIS 117 - Roger <br> 4 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 17), 'end': new Date(2010, 3, 27, 18),'title':'DIS 118 - Fred <br> 6 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 18), 'end': new Date(2010, 3, 27, 19),'title':'DIS 119 - Roger <br> 71 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 19), 'end': new Date(2010, 3, 27, 20),'title':'DIS 120 - William <br> 81 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 28, 10), 'end': new Date(2010, 3, 28, 11),'title':'DIS 121 - Shreyas <br> 85 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 28, 11), 'end': new Date(2010, 3, 28, 12),'title':'DIS 122 - Alex <br> 285 Cory'},
+        {'id':1, 'start': new Date(2010, 3, 28, 13), 'end': new Date(2010, 3, 28, 14),'title':'DIS 123 - Rohan <br> 75 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 26, 17), 'end': new Date(2010, 3, 26, 18),'title':'DIS 124 - David <br> 6 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 10), 'end': new Date(2010, 3, 27, 11),'title':'DIS 125 - Kevin <br> 87 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 11), 'end': new Date(2010, 3, 27, 12),'title':'DIS 126 - Kevin <br> 4 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 14), 'end': new Date(2010, 3, 27, 15),'title':'DIS 127 - Matthew <br> 6 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 15), 'end': new Date(2010, 3, 27, 16),'title':'DIS 128 - Matthew <br> 3105 Etcheverry'},
+        {'id':1, 'start': new Date(2010, 3, 27, 17), 'end': new Date(2010, 3, 27, 18),'title':'DIS 129 - Jay <br> 71 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 18), 'end': new Date(2010, 3, 27, 19),'title':'DIS 130 - Jay <br> 6 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 26, 16), 'end': new Date(2010, 3, 26, 17),'title':'DIS 131 - Jeffrey <br> 3 Evans'},
+        {'id':1, 'start': new Date(2010, 3, 27, 13), 'end': new Date(2010, 3, 27, 14),'title':'DIS 132 - William <br> 105 Latimer'},
+        {'id':1, 'start': new Date(2010, 3, 28, 11), 'end': new Date(2010, 3, 28, 12),'title':'DIS 133 - Rohan <br> 102 Latimer'},
+        {'id':1, 'start': new Date(2010, 3, 28, 13), 'end': new Date(2010, 3, 28, 14),'title':'DIS 134 - Shreyas <br> 85 Evans'},
+
+
+        // labs
+        {'id':2, 'start': new Date(2010, 3, 28, 16), 'end': new Date(2010, 3, 28, 18),'title':'LAB 11 - Andrew <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 28, 18), 'end': new Date(2010, 3, 28, 20),'title':'LAB 12 - Riyaz <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 28, 20), 'end': new Date(2010, 3, 28, 22),'title':'LAB 13 - Andrew <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 8), 'end': new Date(2010, 3, 29, 10),'title':'LAB 14 - David <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 10), 'end': new Date(2010, 3, 29, 12),'title':'LAB 15 - Fred <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 12), 'end': new Date(2010, 3, 29, 14),'title':'LAB 16 - Sagar <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 14), 'end': new Date(2010, 3, 29, 16),'title':'LAB 17 - Roger <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 16), 'end': new Date(2010, 3, 29, 18),'title':'LAB 18 - Fred <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 18), 'end': new Date(2010, 3, 29, 20),'title':'LAB 19 - Roger <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 14), 'end': new Date(2010, 3, 29, 16),'title':'LAB 20 - William <br> 277 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 30, 9), 'end': new Date(2010, 3, 30, 11),'title':'LAB 21 - Shreyas <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 30, 11), 'end': new Date(2010, 3, 30, 13),'title':'LAB 22 - Alex <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 30, 13), 'end': new Date(2010, 3, 30, 15),'title':'LAB 23 - Rohan <br> 330 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 28, 17), 'end': new Date(2010, 3, 28, 19),'title':'LAB 24 - David <br> 273 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 9), 'end': new Date(2010, 3, 29, 11),'title':'LAB 25 - Kevin <br> 273 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 11), 'end': new Date(2010, 3, 29, 13),'title':'LAB 26 - Kevin <br> 273 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 13), 'end': new Date(2010, 3, 29, 15),'title':'LAB 27 - Matthew <br> 273 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 15), 'end': new Date(2010, 3, 29, 17),'title':'LAB 28 - Matthew <br> 273 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 17), 'end': new Date(2010, 3, 29, 19),'title':'LAB 29 - Jay <br> 273 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 19), 'end': new Date(2010, 3, 29, 21),'title':'LAB 30 - Jay <br> 273 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 28, 16), 'end': new Date(2010, 3, 28, 18),'title':'LAB 31 - Jeffrey <br> 277 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 29, 12), 'end': new Date(2010, 3, 29, 14),'title':'LAB 32 - William <br> 277 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 30, 11), 'end': new Date(2010, 3, 30, 13),'title':'LAB 33 - Rohan <br> 277 Soda'},
+        {'id':2, 'start': new Date(2010, 3, 30, 13), 'end': new Date(2010, 3, 30, 15),'title':'LAB 34 - Shreyas <br> 277 Soda'},
+
+
+
+        ]
+  };
+
+  $(document).ready(function() {
+    $('#sched').weekCalendar({
+      data: eventDatasched,
+      date: new Date(2010, 3, 28),
+      timeslotsPerHour: 2,
+      allowCalEventOverlap: true,
+      overlapEventsSeparate: true,
+      totalEventsWidthPercentInOneColumn : 100,
+      businessHours: {start: 8, end: 22, limitDisplay: true},
+      buttons: false, 
+      readonly: true,
+      allowEventCreation: true,
+      showHeader: false,
+      timeslotHeight: 30,
+
+
+      height: function($sched) {
+        return $(window).height(); //- $('h1').outerHeight(true);
+      },
+      eventRender: function(calEvent, $event) {
+        if (calEvent.end.getTime() < new Date().getTime()) {
+          $event.css('backgroundColor', '#aaa');
+          $event.find('.time').css({
+            backgroundColor: '#999',
+            border:'1px solid #888'
+          });
+        }
+      },
+    });
+
+
+    document.getElementsByClassName("wc-day-1")[0].innerHTML = "Monday";
+    document.getElementsByClassName("wc-day-2")[0].innerHTML = "Tuesday";
+    document.getElementsByClassName("wc-day-3")[0].innerHTML = "Wednesday";
+    document.getElementsByClassName("wc-day-4")[0].innerHTML = "Thursday";
+    document.getElementsByClassName("wc-day-5")[0].innerHTML = "Friday";
+
+
+    document.getElementsByClassName("wc-day-1")[1].innerHTML = "Monday";
+    document.getElementsByClassName("wc-day-2")[1].innerHTML = "Tuesday";
+    document.getElementsByClassName("wc-day-3")[1].innerHTML = "Wednesday";
+    document.getElementsByClassName("wc-day-4")[1].innerHTML = "Thursday";
+    document.getElementsByClassName("wc-day-5")[1].innerHTML = "Friday";
+
+    document.getElementsByClassName("wc-scrollable-grid")[0].style["cssText"] = "height: 1000px;";
+    document.getElementsByClassName("wc-scrollable-grid")[1].style["cssText"] = "height: 1000px;";
+
+  });
+  </script>
+  <div id="sched"><div class="ui-widget wc-container"><div class="ui-widget-content wc-header"><table><tbody><tr><td class="wc-time-column-header"></td><td class="wc-day-column-header wc-day-1" id="wc-day-col-head1">Monday</td><td class="wc-day-column-header wc-day-2" id="wc-day-col-head2">Tuesday</td><td class="wc-day-column-header wc-day-3" id="wc-day-col-head3">Wednesday</td><td class="wc-day-column-header wc-day-4" id="wc-day-col-head4">Thursday</td><td class="wc-day-column-header wc-day-5" id="wc-day-col-head5">Friday</td><td class="wc-scrollbar-shim" style="width: 0px;"></td></tr></tbody></table></div><div class="wc-scrollable-grid" style="height: 916px;"><table class="wc-time-slots"><tbody><tr class="wc-grid-row-timeslot"><td class="wc-grid-timeslot-header"></td><td colspan="5"><div class="wc-no-height-wrapper wc-time-slot-wrapper"><div class="wc-time-slots"><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div><div class="wc-time-slot" style="height: 29px;"></div><div class="wc-time-slot wc-hour-end" style="height: 29px;"></div></div></div></td></tr><tr class="wc-grid-row-events"><td class="wc-grid-timeslot-header"><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">8<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">9<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">10<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">11<span class="wc-am-pm">AM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">12<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">1<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">2<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">3<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">4<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">5<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">6<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">7<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">8<span class="wc-am-pm">PM</span></div></div><div class="wc-hour-header ui-state-active wc-business-hours"><div class="wc-time-header-cell" style="height: 49px; padding: 5px;">9<span class="wc-am-pm">PM</span></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-1"><div class="wc-full-height-column wc-day-column-inner day-1" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 420px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">Lecture <br> Wheeler Auditorium</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 540px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 111 - Andrew <br> 4 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 600px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 112 - Riyaz <br> 2 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 660px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 113 - Andrew <br> 2 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 540px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 124 - David <br> 6 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 131 - Jeffrey <br> 3 Evans</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-2"><div class="wc-full-height-column wc-day-column-inner day-2" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 60px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 114 - David <br> 75 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 120px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 115 - Fred <br> 85 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 116 - Sagar <br> 71 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 360px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 117 - Roger <br> 4 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 540px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 118 - Fred <br> 6 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 600px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 119 - Roger <br> 71 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 660px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 120 - William <br> 81 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 120px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 125 - Kevin <br> 87 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 126 - Kevin <br> 4 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 360px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 127 - Matthew <br> 6 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 420px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 128 - Matthew <br> 3105 Etcheverry</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 540px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 129 - Jay <br> 71 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 600px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 130 - Jay <br> 6 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 132 - William <br> 105 Latimer</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-3"><div class="wc-full-height-column wc-day-column-inner day-3" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 420px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">Lecture <br> Wheeler Auditorium</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 120px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 121 - Shreyas <br> 85 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 122 - Alex <br> 285 Cory</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 123 - Rohan <br> 75 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 60px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 133 - Rohan <br> 102 Latimer</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 60px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">DIS 134 - Shreyas <br> 85 Evans</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 11 - Andrew <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 600px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 12 - Riyaz <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 720px; height: 120px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 13 - Andrew <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 540px; height: 120px; display: block; width: 33.3333333333333%; left: 66.6666666666667%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 24 - David <br> 273 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 120px; display: block; width: 33.3333333333333%; left: 33.3333333333333%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 31 - Jeffrey <br> 277 Soda</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-4"><div class="wc-full-height-column wc-day-column-inner day-4" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 0px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 14 - David <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 120px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 15 - Fred <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 240px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 16 - Sagar <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 360px; height: 120px; display: block; width: 33.3333333333333%; left: 66.6666666666667%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 17 - Roger <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 480px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 18 - Fred <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 600px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 19 - Roger <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 360px; height: 120px; display: block; width: 33.3333333333333%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 20 - William <br> 277 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 60px; height: 120px; display: block; width: 33.3333333333333%; left: 33.3333333333333%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 25 - Kevin <br> 273 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 120px; display: block; width: 33.3333333333333%; left: 33.3333333333333%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 26 - Kevin <br> 273 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 120px; display: block; width: 33.3333333333333%; left: 33.3333333333333%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 27 - Matthew <br> 273 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 420px; height: 120px; display: block; width: 33.3333333333333%; left: 33.3333333333333%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 28 - Matthew <br> 273 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 540px; height: 120px; display: block; width: 33.3333333333333%; left: 33.3333333333333%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 29 - Jay <br> 273 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 660px; height: 120px; display: block; width: 33.3333333333333%; left: 33.3333333333333%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 30 - Jay <br> 273 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 240px; height: 120px; display: block; width: 33.3333333333333%; left: 66.6666666666667%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 32 - William <br> 277 Soda</div></div></div></td><td class="ui-state-default wc-day-column wc-day-column-first wc-day-column-last day-5"><div class="wc-full-height-column wc-day-column-inner day-5" style="height: 840px;"><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 420px; height: 60px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">Lecture <br> Wheeler Auditorium</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 60px; height: 120px; display: block; width: 100%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 21 - Shreyas <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 120px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 22 - Alex <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 120px; display: block; width: 50%; left: 0%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 23 - Rohan <br> 330 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 180px; height: 120px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 33 - Rohan <br> 277 Soda</div></div><div class="wc-cal-event ui-corner-all" style="line-height: 15px; font-size: 13px; top: 300px; height: 120px; display: block; width: 50%; left: 50%; right: 0px; background-color: rgb(170, 170, 170);"><div class="wc-time ui-corner-top"></div><div class="wc-title">LAB 34 - Shreyas <br> 277 Soda</div></div></div></td></tr></tbody></table></div></div></div>
+ 
+<!-- End Lab/Discussion Schedule -->
+</div></div>
+</td></tr></tbody></table></td></tr></tbody></table>
+
+
+<br>
+<hr>
+<br>
+
+
+
+
+
+<!-- Begin Staff Section -->
+<!-- Begin Staff Section -->
+<a name="Staff"></a>
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="2">
+
+<tbody><tr><td bgcolor="#000000">
+<div align="center">
+<table width="100%" border="0" cellspacing="0" cellpadding="10" style="border-collapse: collapse" bordercolor="#111111">
+<tbody><tr><td bgcolor="#EEEDD0">
+<h2>Staff</h2>
+
+<table width="100%" border="0">
+  <tbody><tr>
+    <td colspan="4" align="center">
+      <table width="100%" border="0">
+	<tbody><tr>
+    <td width="50%" align="center">
+	<p><a href="http://www.cs.berkeley.edu/~ddgarcia/">
+	  <img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/DanGarciaUCBFaculty2004.jpg" alt="Dan Garcia" name="Dan" height="256" border="0"></a></p>
+
+	  </td>
+
+    <td width="50%" align="center">
+
+	<p><a href="http://www.eecs.berkeley.edu/~mlustig/">
+	  <img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/mlustig.jpg" alt="Miki Lustig" name="Miki" height="256" border="0"></a></p>
+
+	  </td>
+
+	</tr>
+
+	<tr>
+    <td width="50%"><div align="center">
+
+<center>
+                    <b>Instructor:</b> <a href="http://inst.eecs.berkeley.edu/~cs10/sp13/bios/DanBio.txt">Dan Garcia</a><br>
+                <a href="mailto:ddgarcia@cs.berkeley.edu">ddgarcia@cs</a><br>
+                OH: W 10-11am, 777 Soda<br>
+              </center>
+
+	  </div></td>
+
+    <td width="50%"><div align="center">
+
+
+
+<center>
+                    <b>Instructor:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#">Miki Lustig</a><br>
+                    <a href="mailto:mlustig@eecs.berkeley.edu">mlustig@eecs</a><br>
+                OH: Th 2:30-3:30pm, 506 Cory<br>
+              </center>
+
+	  </div></td>
+
+	</tr>
+      </tbody></table>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="4" align="center">
+      <table width="100%" border="0">
+	<tbody><tr>
+	  <td width="33%" align="center">
+	    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	      <img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/sagar.jpg" name="sagar" height="200">
+	    </a>
+	  </td>
+
+	  <td width="33%" align="center">
+	    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	      <img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/jeffrey.jpg" name="jeffrey" height="200">
+	    </a>
+	  </td>
+
+	  <td width="33%" align="center">
+	    <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	      <img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/kevinl.jpg" name="kevin" height="200">
+	    </a>
+	  </td>
+	</tr>
+
+	<tr>
+	  <td width="33%"><div align="center">
+              <b>Head TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/sagar.txt">Sagar Karandikar</a><br>
+	      <a href="mailto:skarandikar@berkeley.edu">skarandikar@berkeley</a><br>
+	      OH: F 2-3pm, 611 Soda<br>
+	  </div></td>
+
+	  <td width="33%"><div align="center">
+              <b>Head TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/jeffrey.txt">Jeffrey Dong</a><br>
+	      <a href="mailto:jefdongus@berkeley.edu">jefdongus@berkeley</a><br>
+	      OH: Th 11am-12pm, 283E Soda<br>
+	  </div></td>
+
+	  <td width="33%"><div align="center">
+              <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/kevin.txt">Kevin Liston</a><br>
+	      <a href="mailto:kmliston@berkeley.edu">kmliston@berkeley</a><br>
+        OH: Tu 9-10am, 330 Soda <br> Tu 12-1pm, 283E Soda<br>
+	  </div></td>
+	</tr>
+      </tbody></table>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="4">&nbsp;
+  </td></tr>
+
+  <tr>
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/roger.jpg" name="roger" height="200">
+      </a>
+    </td>
+
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/riyaz.jpg" name="riyaz" height="200">
+      </a>
+    </td>
+
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/shreyas.png" name="shreyas" height="200">
+      </a>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/roger.txt">Roger Chen</a><br>
+        <a href="mailto:rogerhub@berkeley.edu">rogerhub@berkeley</a><br>
+	OH: F 4-6pm 330 Soda<br>
+    </div></td>
+
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/riyaz.txt">Riyaz Faizullabhoy</a><br>
+        <a href="mailto:riyazdf@berkeley.edu">riyazdf@berkeley</a><br>
+        OH: M 10-11am, 330 Soda<br>
+    </div></td>
+
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/shreyas.txt">Shreyas Chand</a><br>
+        <a href="mailto:shreyas.chand@berkeley.edu">shreyas.chand@berkeley</a><br>
+        OH: M 5-6pm, 651 Soda <br> Tu 2:30-3:30pm, 283E Soda<br>
+    </div></td>
+  </tr>
+
+
+  <tr>
+    <td colspan="4">&nbsp;
+  </td></tr>
+
+  <tr>
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/david.jpg" name="david" height="200">
+      </a>
+    </td>
+
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/fred.jpg" name="fred" height="200">
+      </a>
+    </td>
+
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/andrew.jpg" name="andrew" height="200">
+      </a>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/david.txt">David Adams</a><br>
+        <a href="mailto:dadams@berkeley.edu">dadams@berkeley</a><br>
+        OH: M 12-1pm, 283E Soda <br> Th 10-11am, 651 Soda<br>
+    </div></td>
+
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/fred.txt">Fred Hong</a><br>
+        <a href="mailto:fredhong@berkeley.edu">fredhong@berkeley</a><br>
+        OH: W 12-2pm, 330 Soda<br>
+    </div></td>
+
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/andrew.txt">Andrew Luo</a><br>
+        <a href="mailto:andrewluo_cs61c@outlook.com">andrewluo_cs61c@outlook.com</a><br>
+        OH: W 6-8pm, 611 Soda <br>
+    </div></td>
+  </tr>
+
+
+  <tr>
+    <td colspan="4">&nbsp;
+  </td></tr>
+
+  <tr>
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/rohan.jpg" name="rohan" height="200">
+      </a>
+    </td>
+
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/matty.jpg" name="matthew" height="200">
+      </a>
+    </td>
+
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/william.jpg" name="william" height="200">
+      </a>
+    </td>
+  </tr>
+
+  <tr>
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/rohan.txt">Rohan Chitnis</a><br>
+        <a href="mailto:ronuchit@berkeley.edu">ronuchit@berkeley</a><br>
+        OH: M 11-12pm, 330 Soda <br> M 2-3pm, 330 Soda<br>
+    </div></td>
+
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/matt.txt">Matthew Griffin</a><br>
+        <a href="mailto:mattgriffin94@yahoo.com">mattgriffin94@yahoo.com</a><br>
+        OH: Tu 4-5pm, 283E Soda <br> W 4-5pm, 283E Soda<br>
+    </div></td>
+
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/william.txt">William Huang</a><br>
+        <a href="mailto:william.huang@berkeley.edu">william.huang@berkeley</a><br>
+        OH: W 9-10am, 330 Soda <br> W 2-3pm, 330 Soda<br>
+      </div></td>
+  </tr>
+
+
+  <tr>
+    <td colspan="4">&nbsp;
+  </td></tr>
+
+  <tr>
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c-tp/">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/jay.jpg" name="jay" height="200">
+      </a>
+    </td>
+
+    <td width="33%" align="center">
+      <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/#Staff">
+	<img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/alex.jpg" name="alex" height="200">
+      </a>
+    </td>
+
+<!--    <td width="33%" align="center">
+      <a href="#Staff">
+	<img src="images/william.jpg" name="william" height=200>
+      </a>
+    </td> -->
+  </tr> 
+
+  <tr>
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c-tp/">Jay Patel</a><br>
+        <a href="mailto:patel.jay@berkeley.edu">patel.jay@berkeley</a><br>
+        OH: Tu 1-2pm, 283E Soda <br> Th 1-2pm, 283E Soda<br>
+    </div></td>
+
+    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="http://inst.eecs.berkeley.edu/~cs61c/fa14/staff/alex.txt">Alexander Chou</a><br>
+        <a href="mailto:chou.alexander@berkeley.edu">chou.alexander@berkeley</a><br>
+        OH: M 4-5pm, 504 Cory<br>
+    </div></td>
+
+<!--    <td width="33%"><div align="center">
+        <b>TA:</b> <a href="staff/william.txt">William Huang</a><br>
+        <a href="mailto:">email here</a><br>
+        Sections: <br>
+        OH: <br>
+      </td> -->
+  </tr>
+
+
+  <tr>
+    <td colspan="4">&nbsp;
+  </td></tr>
+
+
+
+
+
+</tbody></table>
+
+<p>If you have a question, here are the ways to get an answer, rated from best to worst:
+</p><ol>
+  <li>Search for the answer yourself.&nbsp; Far too often students ask a question whose answer is available on this very page or on the top of assignment handouts.</li>
+  <li>Ask a fellow classmate.</li>
+  <li>Look for your question on <a href="https://piazza.com/berkeley/fall2014/cs61c">Piazza</a>, then ask a new one if necessary.</li>
+  <li>Ask your TA during discussion section, lab, or office hours.</li>
+  <li>Ask Dan or Miki in office hours.</li>
+  <li>Ask Dan or Miki in lecture.</li>
+  <li>Send your TA email.</li>
+  <li>Send Dan or Miki e-mail. <b>Note that this is by far the worst way to ask a question.</b> E-mail as a communications medium simply does not scale to ~700 students.</li>
+</ol>
+<p>
+
+</p><p><b>Readers</b></p>
+<table cellspacing="0" cellpadding="0" width="100%" style="border-collapse: collapse" bordercolor="#111111">
+  <tbody><tr bgcolor="#B0B0B0" align="left">
+    <th><b>Name</b></th>
+    <th><b>Grading Accounts</b></th>
+    <th><b>E-mail</b></th>
+  </tr>
+
+ <tr bgcolor="#E0E0E0">
+    <td>Nolan Lum</td>
+    <td>Two letter: <tt>cs61c-aa -&gt; cs61c-eq</tt></td>
+    <td><a href="mailto:cs61c-ri@imail.eecs.berkeley.edu">cs61c-ri@imail.eecs.berkeley.edu</a></td>
+  </tr>
+  <tr bgcolor="#F0F0F0">
+    <td>Xinghua Dou</td>
+    <td>Two letter: <tt>cs61c-er -&gt; cs61c-ig</tt></td>
+    <td><a href="mailto:xinghuadou@berkeley.edu">xinghuadou@berkeley.edu</a></td>
+  </tr>
+  <tr bgcolor="#E0E0E0">
+    <td>Harrison Wang</td>
+    <td>Two letter: <tt>cs61c-ii -&gt; cs61c-lp</tt>, Three letter: <tt>cs61c-aaa -&gt; cs61c-adj</tt></td>
+    <td><a href="mailto:h.wang94@berkeley.edu">h.wang94@berkeley.edu</a></td>
+  </tr>
+  <tr bgcolor="#F0F0F0">
+    <td>Ryoko Janlie</td>
+    <td>Three letter: <tt>cs61c-adk -&gt; cs61c-ago</tt></td>
+    <td><a href="mailto:ryoko.janlie@berkeley.edu">ryoko.janlie@berkeley.edu</a></td>
+  </tr>
+  <tr bgcolor="#E0E0E0">
+    <td>Dasheng Chen</td>
+    <td>Three letter: <tt>cs61c-agp -&gt; cs61c-ano</tt></td>
+    <td><a href="mailto:dasheng@berkeley.edu">dasheng@berkeley.edu</a></td>
+  </tr>
+  <tr bgcolor="#F0F0F0">
+    <td>Christopher Hsu</td>
+    <td>Three letter: <tt>cs61c-anp -&gt; cs61c-avm</tt></td>
+    <td><a href="mailto:chrishsu@berkeley.edu">chrishsu@berkeley.edu</a></td>
+  </tr>
+  <tr bgcolor="#E0E0E0">
+    <td>Jonathan Eng</td>
+    <td>Three letter: <tt>cs61c-avn -&gt; cs61c-azz</tt></td>
+    <td><a href="mailto:jonathan.eng@berkeley.edu">jonathan.eng@berkeley.edu</a></td>
+  </tr> 
+
+</tbody></table>
+
+
+<!-- End Staff Section -->
+
+<!-- End Staff Section -->
+
+</td></tr></tbody></table>
+</div>
+</td></tr></tbody></table>
+
+<br>
+<hr>
+<br>
+
+<!-- Begin General Info Section -->
+
+<a name="Resources"></a>
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="2">
+<tbody><tr><td bgcolor="#000000">
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="10">
+<tbody><tr><td bgcolor="#EEEDD0">
+<h2>Resources and Handouts</h2>
+
+<table cellspacing="2" cellpadding="2">
+	
+  <tbody><tr>
+    <td>Reference card for GDB version 5:
+    &nbsp;(<a href="http://inst.eecs.berkeley.edu/~cs61c/resources/gdb5-refcard.pdf">pdf</a> |
+    <a href="http://inst.eecs.berkeley.edu/~cs61c/resources/gdb5-refcard.ps">ps</a> | <a href="http://inst.eecs.berkeley.edu/~cs61c/resources/gdb5-refcard.dvi">dvi</a>)</td>
+  </tr>
+
+  <tr>
+    <td>Harvey notes on C:
+    &nbsp;(<a href="http://inst.eecs.berkeley.edu/~cs61c/resources/HarveyNotesC1-3.pdf">pdf</a>)</td>
+  </tr>
+
+  <tr>
+    <td>Hilfinger notes on Memory Management:
+    &nbsp;(<a href="http://inst.eecs.berkeley.edu/~cs61c/resources/pnh.stg.mgmt.pdf">pdf</a>)</td>
+  </tr>
+
+  <tr>
+    <td>MIPS Green Sheet:
+    &nbsp;(<a href="http://inst.eecs.berkeley.edu/~cs61c/resources/MIPS_Green_Sheet.pdf">pdf</a>)</td>
+  </tr> 
+
+  <tr>
+    <td>MIPS Helper Sheet:
+    &nbsp;(<a href="http://inst.eecs.berkeley.edu/~cs61c/resources/MIPS_help.html">html</a>)</td>
+  </tr> 
+
+  <tr>
+    <td>Floating Point Java Demos:
+    &nbsp;(<a href="http://users-tima.imag.fr/cis/guyot/Cours/Oparithm/english/Flottan.htm">html</a>)</td>
+  </tr>
+
+</tbody></table>
+
+
+<hr align="left">
+
+<table>
+  <tbody><tr>
+  <td><a href="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/P&H(1).jpg"><img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/P&H(1).jpg" height="60" align="LEFT" alt="P&amp;H"></a>
+  </td><td>We will be using the <b>fifth edition</b> of Patterson and Hennessy's <i>Computer Organization and Design</i> book ("P&amp;H"), ISBN <b>0124077269</b>.
+
+  </td></tr><tr>
+  <td><a href="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/K&R.jpg"><img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/K&R.jpg" height="60" align="LEFT" alt="K&amp;R"></a>
+  </td><td>We are also requiring <i>The C Programming Language, Second Edition</i> by Kernighan and Ritchie ("K&amp;R"), and will reference its sections in the reading assignments.
+Other books are also suitable if you are already comfortable with them, but our lectures will be based on K&amp;R.
+
+  </td></tr><tr>
+  <td><a href="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/WSC.jpg"><img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/WSC.jpg" height="60" align="LEFT" alt="WSC"></a>
+  </td><td>Finally, we will be using <i>The Datacenter as a Computer: An Introduction to the Design of Warehouse-Scale Machines</i> ("WSC"), which is freely available online <a href="http://inst.eecs.berkeley.edu/~cs61c/resources/WSCBarrosoHolzle.pdf">here</a>.
+</td></tr></tbody></table>
+
+<p>
+The subjects covered in this course include:
+C and assembly language programming,
+how higher level programs are translated into machine language,
+computer organization,
+caches,
+performance measurement,
+parallelism,
+CPU design,
+warehouse-scale computing,
+and related topics.
+The only prerequisite is that you have taken CS61B, or at least have solid experience with a C-based programming language.
+
+</p><hr align="left">
+<p><img src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/piazza.jpg" height="30" align="LEFT" alt="Piazza">The course discussion forum is hosted by <a href="https://piazza.com/berkeley/fall2014/cs61c">Piazza</a>.  We will use this for asking and answering questions and making announcements.
+
+</p></td></tr></tbody></table>
+</td></tr></tbody></table>
+
+<br>
+<hr>
+<br>
+
+<!-- Begin CS Illustrated -->
+<!-- Begin CS Illustrated -->
+<a name="CS Illustrated"></a>
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="2">
+<tbody><tr><td bgcolor="#000000">
+<table align="center" width="100%" border="0" cellspacing="0" cellpadding="10">
+<tbody><tr><td bgcolor="#EEEDD0">
+    <h2>CS Illustrated</h2>
+    Illustrations by Ketrina Yim (<a href="http://csillustrated.berkeley.edu/">csillustrated.berkeley.edu</a>)
+    
+<table align="center" border="0" cellspacing="12" cellpadding="0">
+  <tbody><tr>
+    <td align="center"><b>Number<br>Representations:</b>
+		</td><td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/integer-representations-1-handout.pdf">
+		<img alt="Integer Representations" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/integer-representations-1-handout.jpeg"></a></td> 
+		
+		<td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/integer-representations-2-comparing-handout.pdf"> 
+		<img alt="Comparing Integer Representations" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/integer-representations-2-comparing-handout.jpeg"></a></td> 
+		
+		<td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/integer-representations-3-comparing-handout.pdf"> 
+		<img alt="Comparing Integer Representations 2" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/integer-representations-3-comparing-handout.jpeg"></a></td> 
+		
+		<td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/integer-representations-4-comparing-handout.pdf"> 
+		<img alt="Comparing Integer Representations 3" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/integer-representations-4-comparing-handout.jpeg"></a></td> 
+	</tr> 
+	
+  <tr> 
+    <td align="center"><b>Floating Point<br>Numbers:</b>
+    </td><td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/floating-point-numbers-1-handout.pdf"> 
+		<img alt="Floating Point" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/floating-point-numbers-1-handout.jpeg"></a></td> 
+		
+		<td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/floating-point-numbers-2-handout.pdf"> 
+		<img alt="Floating Point Interpretations" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/floating-point-numbers-2-handout.jpeg"></a></td> 
+		
+		<td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/floating-point-numbers-3-line-handout.pdf"> 
+		<img alt="Floating Point Number Line" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/floating-point-numbers-3-line-handout.jpeg"></a></td> 
+  </tr>
+
+  <tr> 
+    <td align="center"><b>Caches:</b> 
+		</td><td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/cache-1-basics-handout.pdf"> 
+		<img alt="Caching Overview" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/cache-1-basics-handout.jpeg"></a></td> 
+  
+    <td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/cache-2-misses-handout.pdf"> 
+		<img alt="Cache Misses" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/cache-2-misses-handout.jpeg"></a></td> 
+		
+		<td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/cache-3-associativity-handout.pdf"> 
+		<img alt="Cache Associativity" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/cache-3-associativity-handout.jpeg"></a></td> 
+</tr>
+  <tr>
+    <td align="center"><b>Pointers and<br>Arrays:</b> 
+    </td><td align="middle"><a href="http://csillustrated.berkeley.edu/PDFs/handouts/pointers-and-arrays-handout.pdf"> 
+		<img alt="Pointers and Arrays" src="./CS61C Fall 2014  Great Ideas in Computer Architecture (Machine Structures)_files/pointers-and-arrays-handout.jpeg" height="250"></a></td>
+		
+	</tr> 
+	</tbody>
+	
+</table>	
+</td></tr></tbody></table>
+
+</td></tr>
+</tbody></table>
+<!-- end illustrated -->
+
+<!-- end illustrated -->
+
+
+<hr align="left">
+CS61C, <a href="http://inst.eecs.berkeley.edu/~cs61c/index.html">http://inst.eecs.berkeley.edu/~cs61c/</a>
+ 
+(Last Updated: 2014-09-16 @ 14:47)
+
+
+
+</body></html>
