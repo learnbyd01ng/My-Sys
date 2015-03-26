@@ -1,0 +1,273 @@
+/* Styling for course website */
+
+/* General styling */
+body {
+  font-family:  "Open Sans" "Helvetica" sans-serif;
+  font-weight: 500;
+  color: #333;
+  font-size: 15px;
+}
+h2 {
+  color: darkred;
+  font-variant: small-caps;
+  border-left: 4px dotted;
+  padding-left: .3em;
+  margin-bottom: .6em;
+  font-family: "Indie Flower";
+  font-size: 200%;
+}
+p, ul {
+  line-height: 1.38em;
+}
+ul {
+  list-style-type: none;
+  padding-left: 1em;
+}
+li {
+  margin-bottom: .5em;
+}
+
+/* Helpful general classes */
+.note {
+  font-size: .8em;
+  color: #555;
+}
+.date {
+  font-size: .8em;
+  display: inline-block;
+  padding-left: 1em;
+}
+
+/* Links */
+a:visited, a {
+  color: darkblue;
+}
+a:hover {
+  color: blue;
+}
+
+/* Top-level navigation links */
+.class-links {
+  margin-top: 1.8em;
+}
+.class-links a {
+  font-weight: 700;
+}
+.class-links a.active-link, .class-links a.active-link:hover {
+  text-decoration: none;
+  color: darkblue;
+}
+
+/* Large course title link */
+.page-title a, .page-title a:visited {
+  text-decoration: none;
+  color: #444;
+}
+.page-title a:hover {
+  color: blue;
+}
+
+/* Style the large course title */
+.header-bar .page-title {
+  text-align: center;
+  font-family: "Indie Flower";
+  font-size: 150%;
+  line-height: 1.5em;
+  color: #444;
+  font-size: 2.5em;
+}
+.page-title .course-num {
+  font-variant: small-caps;
+  font-size: 150%;
+  font-weight: 800;
+}
+.page-title .course-name {
+  font-size: 110%;
+  font-variant: normal;
+  font-weight:700;
+}
+
+/* Announcement-specific styling */
+ul.announcement-list .announcement-content {
+  /* The announncement blocks */
+  padding-left: 1.8em;
+}
+ul.announcement-list li {
+  /* The announncement blocks */
+  margin-bottom: 1em;
+}
+ul.announcement-list ul li {
+  /* Lists within announcements*/
+  margin-bottom: 0em;
+}
+.announcement-list ul, .announcement-list ol {
+  padding-left: 2.4em;
+}
+.announcement-list ul {
+    list-style-type: square;
+}
+
+/* Individual announcement titles */
+.announcement-list h4 {
+  margin: 0px;
+  padding: 0px;
+  display: inline-block;
+  font-weight: 600;
+  border-left: 3px solid #EDD9D9;
+  background-color: #FFF3F3;
+  padding: .3em 1em .3em .6em;
+}
+.announcement-list .date {
+  color: #888;
+  padding-left: .6em;
+  font-weight: 800;
+}
+
+/* Lecture-specific styling on main page */
+h3.lecture-group {
+  color: darkred;
+  text-align: center;
+  font-size: 1.1em;
+  font-weight: 200;
+  letter-spacing: 1px;
+  margin-bottom: .5em;
+  margin-top: 1em;
+}
+.upcoming-lecture-group h3.lecture-group {
+  margin-bottom: .7em;
+}
+.lecture {
+  padding: .3em;
+  margin-top: .5em;
+  margin-bottom: .5em;
+  border-bottom: 1px solid #DFDFDF;
+  /*border-top: 1px dotted gray;*/
+}
+.lecture .description {
+  margin-left: 1em;
+  font-size: .9em;
+  color: #444;
+}
+.lecture .date {
+  text-align: right;
+  float:right;
+  margin-right: 2em;
+  font-weight: 700;
+}
+.lecture .lecture-content {
+  margin-left: .8em;
+}
+.lecture h4 {
+  font-size: 105%;
+  margin-bottom: .3em;
+  margin-top: 0;
+  display: inline-block;
+}
+.lecture-slides a {
+  /* Also helps style slides and handouts page */
+  display: inline-block;
+  font-weight: 600;
+  font-size: .95em;
+}
+.lecture .slides-wrapper {
+  margin-bottom: 1.2em;
+}
+.lecture .handouts-wrapper, .lecture .readings-wrapper {
+  margin-bottom: .5em;
+}
+
+/* Office hours specific styling */
+.oh-list-bar ul.oh-list li {
+  margin-bottom: 1em;
+  line-height: 1.7em;
+}
+ul.oh-list .oh-times {
+  padding-left: 1em;
+}
+ul.oh-list .oh-name {
+  font-weight: 600;
+}
+.oh-listing-wrapper {
+  padding-left: 1.4em;
+}
+/* Slides and Handouts specific styling */
+.slides-bar .lecture-slides {
+  margin-left: .3em;
+}
+.slides-bar ul.material-list li {
+  margin-bottom: .3em;
+}
+.handouts-bar ul.material-list li {
+  margin-bottom: .3em;
+}
+/* Layout */
+.page-container {
+  min-width: 600px;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.header-bar {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.page-header-wrapper {
+  text-align: center;
+  border-top: 4px solid darkred;
+  border-bottom: 4px solid darkred;
+  padding: 2%;
+}
+
+/* Layout for section-specific columns */
+.column-bar {
+  vertical-align: top;
+  display: inline-block;
+  width: 200px; /* Override */
+}
+.column-bar.calendar-bar {
+  margin-top: 2.2em;
+  margin-right: 20px;
+  width: 600px;
+  margin-bottom: 3em;
+}
+.column-bar.oh-list-bar {
+  /*margin-top: .8em;*/
+  margin-left: 5%;
+  width: 300px;
+}
+.column-bar.announcements-bar {
+  margin-left: 5%;
+  width: 50%;
+}
+.column-bar.lecture-bar {
+  vertical-align: top;
+  display: inline-block;
+  width: 40%;
+}
+.column-bar.handouts-bar {
+  vertical-align: top;
+  display: block;
+  width: 100%;
+}
+.column-bar.slides-bar {
+  width: 100%;
+  display: block;
+}
+
+
+/* Show more lectures */
+i.fa.fa-angle-down {
+  padding: .5em 1.4em;
+
+}
+
+.hide-lectures {
+  cursor: pointer;
+  text-align: center;
+  background-color: #F0F0F0;
+  font-weight: 900;
+  color: #444;
+}
+
+
+
