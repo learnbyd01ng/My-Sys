@@ -1,0 +1,565 @@
+6.033: Security - Underground Web Technologies
+Lecture 25
+Katrina LaCurts, lacurts@mit.edu
+
+**********************************************************************
+* Disclaimer: This is part of the security section in 6.033. Only    *
+* use the information you learn in this portion of the class to      *
+* secure your own systems, not to attack others.                     *
+**********************************************************************
+
+======================================================================
+Introduction
+======================================================================
+
+----------------------------------------------------------------------
+Security so far
+----------------------------------------------------------------------
+
+So far in the security section you've seen all sorts of things:
+
+- L21: Security is hard, and different from fault tolerance.  To
+  secure a system, it's important to be clear about your policy and
+  your threat model.  We have tested models put in place to secure
+  systems.  The guard model, which provides complete mediation, is one
+  such model.  Things can of course go wrong, but it's a good starting
+  point.
+
+- L22: How do we authenticate the client, especially if we assume an
+  adversary has some level of access to the server?  One common way is
+  to use passwords, which aren't as easy to implement as you might've
+  thought!  We need to store salted hashes, think about how to deal
+  with phishing, etc.
+
+- L23: How do we deal with an adversary in the network who wants to
+  observe/tamper with our data?  We create a secure channel using
+  symmetric-key cryptography + MACs + diffie-hellman key exchange,
+  which provides confidentiality and integrity.  It doesn't provide
+  authentication, though.  For that we need public-key crypto +
+  signatures.
+
+- L24: What about an adversary that uses the network to attack us?
+  There are all sorts of ways for an adversary to DDoS us, and many
+  attacks are hard to detect because they look like legitimate
+  traffic.  NIDS do their best using signature- or anomaly-based
+  methods.
+
+----------------------------------------------------------------------
+Today
+----------------------------------------------------------------------
+
+So we have talked about how to provide confidentiality, integrity, and
+authenticity.  Today we're going to look at two technologies that deal
+with a fourth thing: anonymity.
+
+  Aside: One could argue that we dealt with anonymity in the previous
+  lecture, as the attacker remained largely anonymous.
+
+These technologies are "underground web technologies": Tor and
+Bitcoin.  They provide two different functions: Tor is a network for
+users to remain anonymous, and Bitcoin is a digital currency system
+(which possibly provides some level of anonymity -- we'll talk about
+that later).
+
+Aside from falling under this umbrella of underground technologies,
+and dealing in some part with anonymity, Tor and Bitcoin aren't super
+related.  So why cover them?
+- They both deal with interesting technical problems
+- They both solve these problems using things that we've taught you!
+  Public keys, signatures, etc.
+- We'll get to look at some threat models we haven't considered yet
+- Understanding how both of these technologies work, and why people
+  want them, will help you understand how secure you are online.
+
+And finally:
+
+- They're fun and students keep asking me about them.
+
+So today in lecture: A high-level glimpse at Tor and Bitcoin (really,
+digital currency).  Tomorrow in recitation: a more in-depth look at
+Bitcoin and what else you might be able to do with that system besides
+money.
+
+======================================================================
+Tor
+======================================================================
+
+----------------------------------------------------------------------
+Crypto Review
+----------------------------------------------------------------------
+
+Before we delve into Tor, we need to review some cryptography.  This
+is good review for Quiz 2, FYI.
+
+There are (at least) two ways to encrypt data to keep it confidential.
+
+1. Symmetric-key cryptography (you saw this in Lecture 23).  Here,
+   Alice and Bob share a key, k.  They encrypt data with k, and also
+   decrypt data with k (this is why these schemes are called
+   symmetric: the same key is used for encryption and decryption).
+   Anyone who knows k can decrypt a message from Alice or Bob, then,
+   so it's very important that they keep k a secret.
+
+   That brings up the problem of how to Alice and Bob agree on a key?
+   One way is to agree using some out-of-band channel, e.g., Alice and
+   Bob meet for lunch one day and determine a key for their future
+   online communications.  But a more practical way is to use
+   Diffie-Hellman key exchange, which uses math to exchange the key
+   securely.
+
+   Schemes such as AES are examples of symmetric-key cryptography.
+   They have the advantage of being very fast.
+
+2. Public-key cryptography (you saw public-key crypto in Lecture 23,
+   but NOT used in this way.  I'll clarify that shortly.).  Here,
+   Alice and Bob each have their own key pair, which contain one
+   secret key and one public key.  Call them (A_PK, A_SK) and (B_PK,
+   B_SK).  Alice and Bob share their public keys -- A_PK and B_PK --
+   with the whole world.  They share their secret keys with *nobody*,
+   not even each other.
+
+   For Alice to send a message to Bob, she encrypts it with his public
+   key and sends it to him.  Bob will decrypt it with his secret key
+   (so notice that a different key was used for encryption and
+   decryption).  Note that anyone can encrypt a message to Bob.
+   However, the only way to decrypt a message is with the
+   corresponding secret key; only Bob can do the decryption.
+
+   To send a message to Alice, Bob will encrypt it with *her* public
+   key.  She'll decrypt it with her private key.
+
+*We* used public keys in a different way in lecture: we used them for
+signatures.  There, Alice signed a message with her private key.  Bob
+verified that it came from Alice by checking with her public key.
+
+  Mathematically, we would need a private/public key pair for
+  encryption to be structured differently than one for signatures, but
+  that's out of scope for these class.
+
+Whether you use it for encryption or signatures, public-key
+cryptography has a similar goal: give user's a public and private key,
+so that everyone else can perform some action with the public key, but
+only the user (with the private key) can do the inverse action.
+
+- For encryption: everyone can encrypt with Alice's public key, but
+  only Alice can decrypt (with her private key)
+- For signatures: Everyone can verify Alice's signature with her
+  public key, but only Alice can do the initial signing.
+
+In practice, it's common to use public-key cryptography to exchange
+some initial secret.  That secret is then used to generate a symmetric
+key, which the parties use to encrypt the rest of the conversation.
+This is what you saw in the TLS handshake.
+
+Main point: public-key cryptography is great for signatures, but you
+can also use it to provide data confidentiality.
+
+----------------------------------------------------------------------
+Tor's goal and why secure channels don't provide it
+----------------------------------------------------------------------
+
+So now, onto Tor.  Tor's goal is to hide some information from a
+network adversary.  Recall secure channels: if Alice sends a message
+to Bob entirely unencrypted, an adversary can read the contents.  So,
+Alice encrypts the data (encrypted data is denoted by XXX below):
+
+       Alice ---- [to:bob|from:alice|XXXXXXXXX ] ---> Bob
+
+What does the adversary learn from observing this?  That Alice is
+talking to Bob.  Is that a concern?
+
+In some cases, yes!  What if Alice is communicating with a sensitive
+website -- perhaps one that her government monitors -- and doesn't
+want anyone to know it?
+
+So here's our goal: we'd like a system to provide anonymity for
+Alice.  That means that *only she* knows that she is communicating
+with Bob.  Bob himself won't even know.  To make this easier to grasp,
+I'm going to stop using "Bob" and start using "server".
+
+----------------------------------------------------------------------
+Building up to Tor
+----------------------------------------------------------------------
+
+Idea 1: The adversary got the information from the packet header (that
+said "To:Server|From:Alice".  Why not encrypt that too?
+
+Well, then the underlying packet-switched network can't route the
+packet.
+
+                 ******************************
+
+Idea 2: Use a "proxy".  In this method, Alice sends the data to an
+intermediary server first.  The proxy will have a public key, so Alice
+can encrypt her communications to it.  Alice will take the packet she
+wants to send to the server, encrypt it with the proxy's public key,
+and send that to the proxy:
+
+   Alice -- [ To:Proxy|From:Alice Proxy_PK([ To:Server|From:Alice|XXXX
+   ]) ] --> Proxy
+
+   Where everything in () is encrypted with the proxy's public key.
+
+The proxy then strips the first header off, decrypts the payload, and
+sends the resulting packet to the server:
+
+   Proxy -- [ To:Server|From:Alice|XXXX ] --> Server
+
+To an adversary, this whole thing looks like:
+
+   Alice -- [to:P|from:A|xxxx ] -- P -- [to:S|from:A|xxx] --> server
+
+An adversary on the first part of the network won't know that Alice is
+communicating with the server.  But an adversary on the second part
+will.  Moreover, so do the proxy and the server.
+
+At this point, proxies might seem like a dumb idea.  They're actually
+quite useful.  For one, they're the first step to our actual
+solution.  And for two, they're useful by themselves in other
+situations.  Say you didn't want full anonymity, but you did want to
+prevent people in a coffee shop from snooping on your traffic (or
+perhaps more germane, you wanted to stop your 6.033 instructor from
+snooping on your traffic during class).  You could send it via a
+proxy.
+
+                 ******************************
+
+Idea 3: Build up a network of proxies.  Let's say we have N proxies
+available to us.  Alice will choose a sequence of three (or more) of
+them: P1, P2, and P3. in this example.  Her traffic to the server, S,
+is going to follow this path:
+
+   A -- P1 -- P2 -- P3 --> S
+
+What is special here is that, when Alice chooses this sequence --
+known as a "circuit" -- the nodes along the path will set up the
+circuit such that they have the following state.  I've given this
+circuit the ID "5":
+
+   A -- P1 --- P2 ---- P3 --- S
+   5:P1 5:A,P2 5:P1,P3 5:P2,S
+
+The state at each node only tells it what the previous and next hop on
+the circuit are.  No node (except Alice) knows both who the sender and
+receiver of the communications are (P1 knows Alice but not S, and P3
+knows S but not Alice).
+
+   The reason that Alice keeps some state is because she'll create a
+   different circuit for each person she wants to communicate with.
+   S, on the other hand, doesn't need to be aware of this process at
+   all; you'll see why in a second.
+
+Now, just like the proxy did in Idea 2, each node in this path is
+going to make some changes to the packet header as the packet travels
+along.  Remember that XXXX is the data Alice wants to send to S.
+
+   A --- [from:A|to:P1|cir:5|XXX] ---> 
+   P1 -- [from:P1|to:P2|cir:5|XXX] -->
+   P2 -- [from:P2|to:P3|cir:5|XXX] -->
+   P3 -- [from:P3|to:S|XXX] ---------> S
+
+How was each node able to make these changes?  Easy; they just looked
+up in their state table.  P2, for instance, got a packet in circuit 5
+from P1; P2 knows to send that packet to P3.
+
+How does S send a response back to Alice?  Also easy: S received the
+request from P3, so S will send its response back to P3.  P3 (the
+"exit node") will have a little bit of additional state that lets it
+figure out that this packet belongs to circuit 5.  And then P3 knows
+to send it to P2, who sends it to P1, who sends it to Alice.
+
+This is looking really good.  But there's still one problem.  Imagine
+an attacker than can observe the network between Alice and P1, and
+between P3 and S.  This attacker will see the same packet data twice,
+despite the header being different.  The attacker then knows that
+Alice is communicating with S.
+
+                 ******************************
+
+Idea 4: The solution here is to have the nodes on the path change the
+data in some way.  They obviously can't just randomly flip bits; that
+will corrupt the data.
+
+Instead, we're going to use public-key encryption in a clever way.
+Each of our proxies needs its own key pair, and Alice needs to know
+all of the public keys for the proxies on her circuit.
+
+She then encrypts her data with all of them, in a particular order:
+
+  PK_A(circuit:K|PK_B(circuit:K|PK_C(circuit:K|XXX)))
+
+And then:
+
+  Alice --
+  [to:A|from:alice|PK_A(circuit:K|PK_B(circuit:K|PK_C(circuit:K|XXX)))]
+  -->
+  A -- [to:B|from:A|PK_B(circuit:K|PK_C(circuit:K|XXX))] -->
+  B -- [to:C|from:B|PK_C(circuit:K|XXX)] ------------------>
+  C -- [to:S|from:C|XXX] ----------------------------------> S
+
+What Alice did here was add layers of encryption.  Each proxy strips
+off the top layer.  This is known as onion routing, and the proxies
+here are called onion routers.  Tor stands for The Onion Router.
+
+----------------------------------------------------------------------
+Tor
+----------------------------------------------------------------------
+
+So what is Tor then?  It's a network of onion routers that provide
+this service.  Tor actually works slightly differently than what I
+described above (the encryption method is a bit different), but the
+basic idea is there.
+
+Tor is not perfect.  As I've described it, an adversary could still
+use particular traffic statistics to correlate a user's traffic across
+the network.  E.g., it sees some packets from Alice to A that are
+spaced exactly one second apart, and then sees packets from C to S
+that are spaced exactly one second apart.
+
+There are techniques to deal with these things: shaping traffic, or
+mixing traffic.  Out of the scope of this class, but they're pretty
+cool if you're interested.
+
+----------------------------------------------------------------------
+Summary
+----------------------------------------------------------------------
+
+I've skipped over all sorts of things about Tor:
+- How does Alice discover the onion routers?
+- How does she select a circuit?
+- Does she use a separate circuit per TCP connect?  Per server?
+- What is the overhead of all of this?  How does it affect latency?
+  (Spoiler: adversely.  Keeping latency low is Tor's main performance
+  goal)
+
+But now you have a general idea of how it works.  What you've seen is:
+- Secure channels provide confidentiality and integrity, but not
+  anonymity.
+- We can get fairly strong anonymity using public-key cryptography in
+  a clever way (onion routing).
+
+======================================================================
+Digital Currency
+======================================================================
+
+Let's switch gears entirely.  Digital currency.  What is it?
+Actually, let's back up even further: what is money:
+
+- A medium for exchange.  It's not valuable for itself, but for future
+  exchanges (i.e., money is valuable to me because I can use it to buy
+  other things)
+- A store of value.  It allows one to easily store value (instead of
+  objects)
+
+You are, I hope, familiar with the concept of physical money.  Bills,
+coins, etc.  What are some good things about it?
++ Portable
++ Semi-anonymous (modulo, e.g., tracking serial numbers)
++ Can't double-spend: I can't spend the same bill in two places, since
+  once I spend the bill it's gone from my possession
++ Can't "repudiate" after payment: Once I pay someone with bills, I
+  can't lie and say "Oh no I didn't really pay that person"
++ There's no need for trusted third-party to make a transaction.  You
+  just hand the bill to the other person
++ The government can print more as the economy expands or conditions
+  dictate
++/- Difficult to tax/monitor transactions (this is good or bad
+    depending on your point of view.  The government wants things to
+	be easy to tax.  You may not want things to be easy to track.
+	Anonymity!  Although, you might want someone to track your
+	transactions if you feel you're being cheated)
+
+So what are the downsides?
+- Easy to steal
+- Doesn't work online
+
+That last one is a big deal these days.  So let's talk about
+electronic money such as credit cards or Paypal (we are NOT talking
+about Bitcoin yet).
+
++ Works online
++ Harder to steal (sometimes)
+
+But there's no privacy with this type of electronic money.  The
+government can censor/prohibit/tax/control/track, etc.  We rely on
+trusted third parties -- banks, usually -- to do a lot of the
+oversight, and we might not want that.  For instance, do we want a
+bank to know if we send money to help a cause that our government
+doesn't support?
+
+  Note, though, that banks do lots of good things: they're who we go
+  to to resolve disputes, to deal with loss/recovery, etc.  So if we
+  get rid of banks, we're going to need to solve those issues somehow.
+
+----------------------------------------------------------------------
+A Decentralized Digital Currency (Almost)
+----------------------------------------------------------------------
+
+Let's try to develop our own digital currency.  At the moment, we're
+not going to be concerned with anonymizing ourselves, but we are going
+to try to build one that doesn't require a trusted third party such as
+a bank.  The technical issues we'll have to overcome are things such
+as:
+- Forgery (can't generate money you don't have)
+- Double-spending (can't spend the same money twice)
+- Theft
+
+Idea 1: The simplest digital currency.  Every time Alice wants to give
+Bob a dollar, she simply sends him a message that says "I, Alice, am
+giving Bob one dollar."
+
+Problem: Forgery!  Anyone could forge that message.  Eve could send a
+message to Bob that says "I, Alice, am giving Bob one dollar", and
+then Alice would have one less dollar.
+
+                 ******************************
+
+Idea 2: We know how to prevent forgery, though: sign the message.
+SIGN(alice_key, "I, Alice, am giving Bob one dollar.")  Now only Alice
+can create this message.
+
+Problem: Duplicates.  If Alice sends ten messages like the one above,
+did she give Bob ten dollars?  Were some retransmission?  Could Bob
+lie and say he got ten copies when she really only sent him one?
+
+                 ******************************
+
+Idea 3: Add sequence numbers.  You all should recognize this line of
+reasoning!  So far, everything looks similar to when we were
+developing a secure channel.  In fact, what we're really doing here
+has less to do with money and more about securing transactions.  In
+the real world, we secure transactions with locks, safes, real
+signatures, vaults, etc.  In the digital world, we need cryptography.
+
+Because we're talking about money, I'm going to use the term "serial
+numbers" instead of "sequence numbers", and we'll going to stop giving
+Bob a dollar and instead give him a "coin".
+
+At this point, what problems do we need to solve?
+- Keeping track of who owns which coins
+- Assigning new serial numbers
+- Verifying that a particular coin hasn't already been spent
+
+And now you see why banks are useful: normally, they deal with all of
+these problems.  But this is the future, and we want everything to be
+decentralized.  So how do we do this without a bank?
+
+----------------------------------------------------------------------
+Double-spending
+----------------------------------------------------------------------
+
+The main problem we're going to look at in lecture is double-spending.
+Once we can prevent double-spending, the other issues will fall into
+place.  However!  We won't solve double-spending today in lecture.
+I'll give you a sense of why it's hard to solve, and then you'll spend
+time in recitation learning how to solve it (in particular, learning
+how Bitcoin solves it).
+
+So here's the problem: Alice tries to send the same coin to Bob and
+Charlie, i.e., to spend the coin twice.  Remember that this isn't
+possible with physical currency: she can't give the same bill to two
+people.
+
+The first idea to solve this is to publish all transactions in some
+sort of public log.  Instead of having a centralized bank keep track
+of all transactions, we'll let *everybody* keep track of all
+transactions.  Of course, we need a way to secure the log, and to make
+sure everyone has the correct version of the log, but those are
+problems for recitation.
+
+The way this might work is, if Alice sends a coin to Bob, he publishes
+that transaction and alerts everyone.  Then, if Alice later tries to
+send the same coin to Charlie, all parties in the network will know
+that something is amiss: they'll see that Alice already sent that coin
+to Bob (assuming we've set the log up correctly).
+
+So, are we done?  No.  Alice could still try to send the coin to Bob
+and Charlie at the same time, effectively spending it with both
+parties before either has had a chance to publish the transaction.  It
+might seem like Alice needs incredibly good timing to make that
+happen, but imagine that she launches a DDoS attack on the parties.
+She could deliberately disrupt Bob and Charlie's communications with
+the rest of the network such that it took them awhile to publish their
+transactions.  By the time anyone notices that something is amiss,
+Alice has already spent her coin twice.
+
+The basic idea that Bitcoin uses to solve this is a notion of
+consensus: get agreement from "enough people" as to which transaction
+is valid (either the one with Bob or the one with Charlie).
+
+Alice's transaction with either of them won't be valid until "enough
+people" agree.  If she tries to spend the same coin with Bob and with
+Charlie, the majority of the people in the network will only agree on
+one of those transactions (no one will agree that both are valid).
+
+Instead of "enough people", let's say, specifically, "more than 50% of
+the network".  There are at least two problems with this:
+
+1. We might not know how many people are in the network.
+
+2. Even if we know how many people are in the network, Alice could
+   create multiple identities herself.  For instance, maybe she just
+   creates multiple Bitcoin accounts: alice_1@email.com,
+   alice_2@email.com, etc.  This is known as a Sybil Attack: a user
+   subverts a system by creating multiple identities
+
+----------------------------------------------------------------------
+Unsolved Problems
+----------------------------------------------------------------------
+
+And this is where I'm going to leave you for lecture!  After reading
+the paper and attending recitation, you should be able to answer all
+of the following:
+
+** How does Bitcoin prevent someone else from spending my money?
+** What are serial numbers in Bitcoin?
+** What is the analogue of a bank in Bitcoin?
+** How does Bitcoin prevent double-spending, and in particular, thwart
+   Sybil attacks?
+** How does Bitcoin provide an ordering on transactions?
+
+(Note that we didn't talk about the last one at all in lecture: we
+ want to not just prove that transactions are valid, but also have a
+ way to verify in what order they happened, so that at any given time
+ we know who owns what coins.)
+
+Now, why doesn't Bitcoin just tie users to strong identities to
+prevent double-spending?  E.g., use people's social security numbers.
+
+One of Bitcoin's goals is for users to remain anonymous, much like
+Tor's goal.  You'll discuss tomorrow whether that's achieved: does
+Bitcoin, as it stands, really provide anonymity, or could I look at
+the log of transactions and figure out who is doing what?
+
+======================================================================
+Summary
+======================================================================
+
+- Talked about Tor and Bitcoin.  Tor provides a network for keeping
+  users anonymous, which a secure channel does not (there are still
+  attacks on Tor, but they are out of the scope of 6.033).  Bitcoin is
+  a particular form of digital currency which solves (or purports to
+  solve) the consensus issue that I brought up in lecture.  You'll
+  learn more about it tomorrow.  One of its goals is anonymity, but
+  does it really provide that?  You'll find out!  At the very least,
+  it doesn't require users to use strong-identities (e.g., passports,
+  social security numbers)
+
+- The cool technical problems we saw here are: how to design a network
+  where no one, except the sender, keeps state linking sender and
+  receiver, and yet a packet can be sent from A to S; how to create a
+  decentralized digital currency, and in particular, how to create a
+  secure distributed public log.
+
+- These two technologies can get a bad rap, because they are often
+  used on the "underground web".  Unfair!  They solve cool problems in
+  networking/distributed systems.  Moreover, they give you a sense of
+  how secure you are online.  Did you know, e.g., that even if you
+  encrypt your packets, adversaries can get all sorts of
+  meta-information?  Perhaps we live in a world where our government
+  collects that information?  Do we want them to know who we're
+  talking to regardless of whether we're doing something illegal?
+
+Tomorrow recitation: Bitcoin
+Wednesday lecture: Guest lecture
+Thursday recitation: Security wrap-up/review

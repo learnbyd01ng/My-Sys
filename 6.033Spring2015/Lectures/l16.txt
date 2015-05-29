@@ -1,0 +1,176 @@
+              6.033 Spring 2015, Lecture 16
+                      April 6, 2015                          
+                     Hari Balakrishnan                              
+             (Last update: April 23, 2015)
+
+   An algorithm for all-or-nothing put and all_or_nothing get
+         (Adapted from notes by Barbara Liskov)
+                                           
+This note describes the design of an all-or-nothing disk sector,
+supporting a "put" and a "get" method. all_or_nothing_put is called
+when the higher layer (the caller) has some new data to write; for
+example, it could be a bank account balance.
+
+The goal is:
+
+a) all_or_nothing_put is all-or-nothing (all_or_nothing_get will see
+either the old balance or the new one).
+
+b) if all_or_nothing_put completes, all_or_nothing_get will see the
+change (e.g., the new account balance).
+
+We will design the all-or-nothing scheme atop two lower-layer disk
+write/read functions, careful_put() and careful_get().
+
+1. ASSUMPTIONS
+
+a) If careful_put returns, the data has been correctly written to the
+disk sector in question. Thus the only error that might corrupt the
+data is one that occurs during the execution of careful_put. We assume
+that any other disk problems, such as decay, loss of a sector, etc.,
+are handled by other means.
+
+b) A failure during the execution of careful_put will, in general,
+corrupt the data in that sector, but careful_get can detect any
+corruption (via a checksum, for example). A failure in the execution
+of careful_put may occur because of a power failure, software crash,
+etc. A failure may also occur at other times during the execution of
+the all_or_nothing functions.
+
+2. STRATEGY: USE TWO SECTORS
+
+The strategy is to maintain two distinct sectors of data corresponding
+to the specified disk sector, which we will call sector s. s is an
+argument to all_or_nothing_put and all_or_nothing_get. We will adopt
+the "golden rule of atomicity": "never modify the only copy".  That
+is, the sector for which we wish to provide all_or_nothing_put, s,
+will have two distinct disk sectors, s.D0 and s.D1. We will use s.D0
+and s.D1 to to write data using careful_put and read data using
+careful_get.
+
+The plan is to write carefully (using careful_put) so that we can
+guarantee that at most one of s.D0 and s.D1 is corrupted. (Both will
+not be corrupted.)
+
+3. THE ALGORITHM
+
+The pseudocode for all_or_nothing_put and all_or_nothing_get is:
+
+all_or_nothing_put(s, data):
+   status = careful_get(s.D0, buffer)
+   if status == OK:
+      careful_put(s.D1, data);
+      careful_put(s.D0, data);
+   else:
+      careful_put(s.D0, data);
+      careful_put(s.D1, data);
+
+all_or_nothing_get(s, data):
+   status = careful_get(s.D0, data)
+   if flag == OK:
+      return;
+   careful_get(s.D1, data);
+
+
+4. MAIN CLAIM & PROOF
+
+The algorithm stated above preserves the following predicate 
+P: at least one of (s.D0, s.D1) is uncorrupted.
+
+The proof is by induction.
+
+Basis step: initially both copies are OK by assumption, so P holds.
+
+Inductive step: assume P holds when all_or_nothing_put is called.
+
+There are two cases to consider:
+
+a) both copies are good: In this case it doesn't matter what order we
+write them. If the first write finishes, that copy is good; if it
+doesn't the other copy is good. Therefore P holds.
+
+b) one copy is bad: This is the key step. In this case we must write
+to the bad copy first. If this write doesn't finish, we still have one
+good copy. If it finishes, we now have 2 good copies, so we will
+satisfy P even if the second write fails.
+
+Specifically:
+
+If D0 is good when all_or_nothing_put starts: In this case, we
+write to D1 first. If that write doesn't finish we haven't done
+anything to D0 and therefore it is still good. If that write finishes,
+D1 is now good, and therefore if doesn't matter whether the write to
+D0 fails.
+
+If there is a failure after the careful_put to D1 completes and before
+teh careful_put to D0 starts, then both D0 and D1 have uncorrupted
+data. But they are different. In this case, all_or_nothing_get will
+return the data in D0. But as soon as D0 starts getting written, the
+data returned to a subsequent all_or_nothing_get is the data in D1;
+that data will be the same as in D0 if the careful_put to D0 also
+succeeds.
+
+On the other hand, if D0 is bad when all_or_nothing_put starts: This
+implies that D1 is good, by our inductive assumption. The algorithm
+writes to D0 first. If that write doesn't finish, the data in D1 is
+still good. If the write to D0 finishes, D0 is now good, and therefore
+it doesn't matter if the write to D1 fails. In either case we are sure
+that at least one of D0 and D1 is good; the data returned from
+all_or_nothing_get is D0 if it is good, and D1 if D0 is bad.
+
+P implies directly that all_or_nothing_put is all or nothing, so we
+satisfy our goal.
+
+If all_or_nothing_put finishes, it has succeeded in writing the new
+state to both D0 and D1. Therefore all_or_nothing_get will observe the
+new state.
+
+5. COMMIT POINT
+
+What is the commit point of this algorithm; i.e., the point in time
+after which daata will be visible to a subsequent caller of
+all_or_nothing_get? 
+
+The commit point is different for various executions: 
+-- The new state will be visible as soon as the careful_put to D0
+finishes. 
+-- It will also be visible in the case where the careful_put to D1
+happens first, successfully, and the careful_put to D0 starts. The
+commit point in this case is the instant of time at which the
+careful_put to D0 starts.
+
+There are the following cases:
+
+D0 was good when all_or_nothing_put started
+(a) the careful_put to D1 failed.
+(b) the careful_put to D1 succeeded and then the machine failed.
+(c) the careful_put to D1 succeeded, but the machine failed during the write to D0.
+
+D0 was bad when all_or_nothing_put started
+(a) the careful_put to D0 failed.
+(b) the careful_put to D0 succeeded and then the machine failed.
+(c) the careful_put to D0 succeeded and the machine failed during the write to D1.
+
+The new state will be visible in cases 1c, 2b, and 2c. (Of course as
+indicated, it will also be visible if all_or_nothing_put finishes.
+
+An implementation concerned with a concurrent all_or_nothing_put and
+all_or_nothing_get operations would use locks, as we will see
+later. Still, it is interesting to note that one all_or_nothing_put
+and multiple all_or_nothing_get operations can operate concurrently
+and the get operations will never see a non-atomic result. An
+in-progress partial write (careful_put) would show up to the reader
+(in careful_get) as a corrupt sector -- recall that careful_get has an
+integrity check (via a checksum), returning OK only if the data is not
+corrupt. Handling multiple concurrent all_or_nothing_put operations
+requires more explicit coordination (via locks, for example).
+
+6. PROS AND CONS OF THIS ALGORITHM
+
+  + Works well for a single sector and can be generalized to a single file.
+  - Hard to generalize to multiple files or directories.
+     Might have to place all files in a single directory, or rename subdirs.
+  - Requires copying the entire sector (file) for any (small) change.
+  - Only one put operation can happen at a time (as mentioned above).
+  - Only works for atomic actions that happen on a single computer,
+  single disk.

@@ -1,0 +1,498 @@
+6.033 - Operating Systems: Structure
+Lecture 7
+Katrina LaCurts, lacurts@mit.edu
+(many ideas taken from Sam Madden's Spring 2014 notes)
+
+======================================================================
+Previous Lectures
+======================================================================
+
+Our last three lectures have focused on how an operating system
+enforces modularity on a single machine via virtualization and
+abstraction (mostly via virtualization).  We've seen a lot of kernel
+and OS features.  In particular:
+
+- Virtual memory, which protects two running programs from each other
+- System calls, which allow programs to interact with devices such as
+  the disk and display
+- Bounded buffers, which allow programs to communicate
+- Threads, which virtualize the CPU so multiple threads can share it
+
+So you have a pretty good sense of how the operating system kernel
+works.  Today we're going to ask ourselves a different question: Can
+we rely on the OS kernel to work properly?
+
+======================================================================
+Kernel Structure
+======================================================================
+
+The answer to that question is, of course, "no".
+
+Just as an example, the Linux kernel is riddled with bugs!  Why are
+there so many bugs?  Let's discuss.
+
+----------------------------------------------------------------------
+Monolithic kernels
+----------------------------------------------------------------------
+
+Linux is, effectively, one large C program.  Despite all of our talk
+about enforcing modularity -- which Linux does a fine job of between
+user programs, and between the kernal and user programs -- there is
+virtually no modularity within the kernel itself.  A lot of careful
+software engineering works: object-oriented programming, common
+interfaces between components, etc.
+
+  Example: All storage devices implement the same set of functions
+  regardless of whether they're a USB drive, hard drive, CD, etc.
+
+The bugs that we see in the Linux kernel come about in part because it
+is so complex.
+
+This design is known as a monolithic kernel: where there is no
+enforced modularity within the kernel itself, despite good
+software-engineering practices.  Ultimately, a bug in the kernel can
+affect the entire system.
+
+Let's see how.
+
+The program I showed in class was a small Linux kernel module; it runs
+as part of the kernel.  Every five seconds it randomly chooses N
+locations in physical memory and writes a random byte to that
+location.  We start with N=1, and each time go up by a factor of 2x
+(1, 2, 4, ..).  I ran it with:
+
+> insmod scribble.ko
+> dmesg (run periodically)
+
+And we saw that the kernel failed.  This is not great: a kernel bug
+caused the entire system to fail.
+
+Is it actually a good thing that Linux went so long before crashing?
+Well, problems can be hard to detect, even though they may stil do
+damage.  E.g., maybe my files are now corrupted, but the system didn't
+crash.
+
+A worse thing: an adversary can exploit a bug to gain unauthorized
+access to the system.  We'll look in security in much more detail
+towards the end of 6.033.
+
+----------------------------------------------------------------------
+Microkernels
+----------------------------------------------------------------------
+
+So how can we deal with the complexity that seems inherent to the
+kernel?  Could we design an operating system that was less prone to
+this problem?
+
+Yes!  Microkernels.  Microkernels enforce modularity by putting
+subsystems in "user" programs.  For instance, file servers, device
+drives, graphics, networking are just programs that communicate with
+other programms using the OS.  We get the benefits of modularity with
+this design.  There will still probably be bugs, but
+a) it's likely there will be fewer, since the system is less complex
+   by design and
+b) a single bug has a much smaller chance of crashing the entire
+   system
+
+So if microkernels are so great, why hasn't Linux been rewritten in a
+microkernel style?  There are a few reasons (you might not consider
+them all *good* reasons..):
+
+- Communication costs in a microkernel are high (much higher than a
+  procedure call)
+
+- It's not clear that moving large components to userspace wins.
+  E.g., if the entire file system crashes, we might lose all of the
+  data, so nothing will really work anyway.
+
+- There are many dependencies between the components in a kernel.  We
+  have to balance, e.g., the memory used for the file cache vs. the
+  process memory.  Striking that balance gets harder when the file
+  server is a user program (we have to share a buffer cache between
+  different entities).
+
+- A re-design requires lots of careful design work.  For instance, if
+  we redesign the file system, do we have one file server program per
+  file system?  Mount points that tell the FS client to talk to
+  another FS server?
+
+- There is a trade-off between spending a year of Linux developer time
+  on new features or a microkernel rewrite.
+
+- A microkernel design could make it more difficult to change
+  interfaces later (user programs would have to be rewritten)
+
+Some parts of Linux do have microkernel design aspects.  The X server,
+some USB drivers, printing, SQL databases, DNS, SSH, ...  You can
+restart these components without crashing the kernel or other
+programs.
+
+======================================================================
+Virtual Machines
+======================================================================
+
+So we've got a new problem here: How do we deal with Linux kernel bugs
+without redesigning Linux from scratch?
+
+As always, we'd like the benefits of the client/server model, so we
+could start with that: run different programs on different computers.
+They won't interfere with each other since each computer has its own
+Linux kernel.
+
+But just like before, this is impractical; we can't afford so many
+physical computers (hardware cost, power, space,...).
+
+What we will do instead is run multiple instances of Linux on a single
+computer.  This will provide fault isolation, and allow us to have an
+OS environment customized for each program.
+
+This sounds just like what we did before, when we ran multiple
+programs on a single computer!  Then, we were using virtualization
+and abstraction, so we should be able to use the same techniques here,
+no?
+
+Almost.  We have one new constraint: compatibility.  We want to run
+the existing Linux kernel without changing any of its code.  This
+means we cannot add new OS abstractions into Linux; we need to make do
+with just virtualization.
+
+Thus, our solution of how to deal with bugs is to add another layer of
+virtualization.
+
+----------------------------------------------------------------------
+Virtual machines
+----------------------------------------------------------------------
+
+The approach we will take is to use "virtual machines", or VMs.
+Multiple virtual machines can run on a single machine, just like
+multiple programs can run on a single CPU.  The equivalent of a kernel
+in this set-up is the "virtual machine monitor" (VMM).
+
+In the demo, you saw me run Linux inside of a virtual machine.
+Through this, we got enforced modularity: Linux inside the VM failed,
+but the rest of the system (my host OS) was fine.
+
+There are two common ways to implement VMs.  The way you saw on the
+demo is to run the VMM as a user-mode application inside of a host OS.
+I ran a Linux VM inside of OS X.  On my machine, the Linux VM just
+looks like a bunch of files on a disk.  An the VM is running just as
+another process.
+
+However, to illuminate the issues of how virtual machines are
+implemented, I'm going to talk about a different method: the VMM will
+run on hardware in kernel mode, with the guest OSes in user mode.
+
+The issues to contend with are the same in either case (whether the
+VMM runs as an app inside a host OS or directly on hardware).
+Moreover, the second method provides a better parallel with our
+previous operating system discussions.
+
+----------------------------------------------------------------------
+Role of the VMM
+----------------------------------------------------------------------
+
+We're going to spend the rest of lecture discussing how the VMM
+works.  So let's start off by figuring out what it even needs to do.
+At a minimum, it needs to
+
+1. Allocate resources.  For instance, if there are multiple guest
+   OSes, the VMM has to divide physical memory between them
+
+2. Dispatch events.  The VMM needs to forward interrupts, exceptions,
+   etc. invoked by applications to the appropriate guest OS
+
+3. Deal with instructions from the guest OS that require interaction
+   with the physical hardware.
+
+It's that last bit that we're going to spend time on.
+
+----------------------------------------------------------------------
+Emulating every single instruction
+----------------------------------------------------------------------
+
+One way to design the VMM is to emulate every instruction from the
+guest OS.  I.e., every single instruction from the guest OS will be
+passed to the OS via the VMM (with the VMM potentially making some
+changes to the instruction to achieve the correct emulation).
+
+This can be done, but in practice, it's very slow.  We'd much prefer
+for the guest OSes to be able to run instructions directly on the CPU,
+just like a regular kernel.
+
+  Aside: As long as the guest OS uses the same instruction set as the
+  host computer, we should be able to get this to work.
+
+So what's the problem?  Why can't we just do this?  For user
+instructions (add, sub, mul), everything will work just fine.
+Privileged instructions are the problem here: the guest OSes are
+running in user-mode, so they can't execute any privileged
+instructions.
+
+  Aside: Why not run them in kernel mode?  Because then we're back to
+  our original problems.
+
+Remember that each kernel assumes it manages:
+- physical memory
+- the page table address register
+- U/K bit
+- Interrupts, registers, etc.
+
+Since the guest OSes are in user-mode, they won't be allowed to modify
+any of these entities.
+
+Thus, the third role of the VMM becomes this:
+
+3. Virtualizing the computer, in particular handling privileged
+   instructions.
+
+======================================================================
+VMM Implementation
+======================================================================
+
+The basic approach for all of this is known as "trap and emulate":
+
+1. The guest OS runs in user mode, always.
+2. Privileged instructions in guest code will cause an exception,
+   which the VMM will intercept and emulate.
+3. If the VMM can't emulate an instruction, it will send the exception
+   to the guest OS so that it can handle it.
+
+The key problems we need to solve are:
+1. What to do with these trapped interrupts (i.e., how to emulate
+   them in step 2)
+2. How to deal with instructions that *don't* trigger an interrupt,
+   but that the VMM still needs to intercept
+
+In this lecture, I'll talk about how the VMM virtualizes memory, the
+U/K bit, and the disk.  The techniques for virtualizing additional
+entities (registers, etc.) are similar.
+
+Our general setup will be to have each guest OS sit on top of virtual
+hardware, which will contain all of the components above (page table,
+U/K bit, etc.).  The VMM will act as the middleman between this
+virtual hardware and the physical hardware.  Its job is to implement
+virtual hardware using physical hardware.
+
+----------------------------------------------------------------------
+Virtualizing memory
+----------------------------------------------------------------------
+
+Let's start with virtualizing memory.  At a high-level, we're trying
+to do the same thing we did when we virtualized memory within a single
+OS.
+
+The VMM must translate guest OS addresses into physical memory
+addresses.  This means that we have three layers of addressing now:
+1. Guest virtual
+2. Guest physical
+3. Host physical
+
+Now, what should the hardware PTR point to?  There are actually two
+ways to do this: an old way and a new way.  I'm going to explain the
+older way first.
+
+The old way uses a technique known as "shadow pages".  With this
+technique, the VMM will set up a separate page table based on the
+guest OS's page table for the physical hardware to use.  Even though
+there will be two layers of tables, only the shadow page table will be
+used by the physical hardware for translation.
+
+So, how does this work?
+
+1. The guest OS attempts to load the page table register.  This causes
+   an interrupt (remember, guest OS runs in user mode), which is
+   intercepted by the VMM.
+
+2. The VMM locates the guest OS's page table, which it can do because
+   the address is part of the load call.  Recall that the guest OS's
+   page table maps guest virtual addresses to guest physical
+   addresses.
+
+   The VMM will combine the guest OS's page table with its own table,
+   which maps guest physical addresses to host physical addresses.  In
+   combining the two tables, it constructs a third, which maps guest
+   virtual addresses to host physical addresses (essentially, it uses
+   its own table to translate every address in the guest OS's table).
+
+3. The VMM loads the host physical address of this new page table into
+   the hardware's PTR.  Now the hardware uses that page table for
+   translation, and this translation goes directly from the guest OS
+   virtual address to the host physical hardware address.
+
+Again, even though there are two page tables here, only one -- the
+host's page table -- is actually used for look-ups.
+
+  Aside: Above, I told you this technique was called "shadow page
+  tables".  There is some disagreement as to which of the three page
+  tables is the shadow table, so we won't use that term to reference
+  any specific table.
+
+To do the actual translation, let’s see an example:
+
+   Suppose the guest’s virtual page table is:
+    0x01 | 0xA2
+    0x02 | 0xA3
+
+   The VMM will create mappings between guest physical addresses and
+   real physical addresses.  Let’s say:
+    0xA1 | 0xC0
+    0xA2 | 0xC1
+    0xA3 | 0xC4
+
+   The host's page table, then, is:
+    0x01 | 0xC1
+    0x02 | 0xC4
+
+   We just took the guest’s virtual page table, and translated the
+   virtual hardware addresses to physical hardware addresses.
+
+What will happen if the guest OS modifies its page table?  In real,
+non-virtualized hardware, the hardware would just start using the new
+page table's mappings (minus some details we're leaving out).  But the
+VMM has a separate shadow page table.  Thus, the VMM needs to
+intercept when the guest OS modifies its page table and update the
+shadow page table accordingly.
+
+Unfortunately, without modification, those instructions will not throw
+an interrupt!  I.e., the VMM doesn't have an obvious way to intercept
+them.
+
+To solve this problem, we're going to force an interrupt.  We will
+mark the guest OS's page table as read-only memory (remember: we can
+do that with the R/W bit in the page table).  If the guest OS tries to
+modify them, the hardware will trigger a page fault, which is handled
+by the VMM.  The VMM will update the shadow page table and resume the
+guest OS.
+
+Now, it's time for the second technique: the more modern way.  In more
+modern hardware, there is support for virtualization, which we will
+discuss in more depth shortly.  For virtualizing memory specifically,
+the physical hardware effectively knows about both levels of tables.
+It will do a look-up in the guest OS's page table and then a look-up
+in the VMM's page table.
+
+  Aside: For those wondering about how various levels of privilege
+  (user/kernel) affect this, the spoiler is that hardware support for
+  virtualization adds a third privilege level that allows these types
+  of instructions to be safely executed.
+
+----------------------------------------------------------------------
+Virtualizing the U/K bit
+----------------------------------------------------------------------
+
+Now we've virtualized memory.  Let's turn our attention to the U/K
+bit.  Remember that the U/K bit affects whether privileged
+instructions can be executed and whether pages marked as read-only in
+the page table can be modified.  The guest OS needs the ability to do
+some of these things.
+
+It seems like we've already solved that, though.  Our basic
+trap-and-emulate approach works fine with the instructions that can be
+trapped, perhaps with the addition of one step to our previous
+algorithm:
+
+1. The guest OS runs in U mode, always.
+2. The VMM stores the current state of the guest OS's U/K bit
+3. Privileged instructions in guest code will cause an exception,
+   which the VMM will intercept and emulate.
+4. If the VMM can't emulate an instruction, it will send the exception
+   to the guest OS so that it can handle it.
+
+What causes problems here is instructions that don't cause an
+exception.  The U/K bit is involved in two of those:
+
+- On x86, anyone -- user or kernel -- can *read* the current U/K bit
+  value.  A guest OS kernel might read it and observe that it's
+  running in U mode, even though it's expecting K.
+
+- Anyone is allows to switch the U/K bit to U.  The VMM would need to
+  intercept the switch to U mode and replace the shadow page table.
+
+We have a few solutions to this problem
+
+1. Para-virtualization.  In para-virtualization, we modify the guest
+   OS slightly to account for these differences.  This compromises our
+   original goal of compatability: remember, we wanted to run multiple
+   instances of an OS on a single computer without making changes to
+   an OS.
+
+   Moreover, for some OSes this is not easy to do (it involves fairly
+   straightforward changes to Linux, but is difficult to do to Windows
+   without Microsoft's help).
+
+2. Binary translation.  With binary translation, the VMM analyzes code
+   from the guest VM and replaces problematic instructions with an
+   instruction that traps.  Once we can generate the trap, the VMM can
+   intercept the instruction and emulate the desired behavior.
+   Original versions of VMWare did this.
+
+3. Hardware support.  This is arguably the best of the three
+   solutions.  Some architectures (AMD, Intel) have virtualization
+   support built into their CPUs.  They come with a special VMM
+   operating mode in addition to the U/K bit, and the two levels of
+   page tables are implemented in hardware.
+
+   This hardware support makes the VMM's job easier.  It allows the
+   guest OS to manipulate the U/K bit and the guest's page table under
+   certain conditions.  Moreover, the VMM can choose which interrupts
+   it wants to handle.  Most modern VMMs take this approach.
+
+----------------------------------------------------------------------
+Virtualizing disk
+----------------------------------------------------------------------
+
+Just briefly, I'll touch on how the VMM virtualizes devices such as
+the disk.
+
+The guest OS accesses the disk by issuing special instructions to
+access I/O memory.  These instructions are only accessible in K/VMM
+mode and raise an exception.  The VMM handles this exception by
+simulating a disk operation: It writes (reads) a "disk" block to
+(from) a file in the host file system.
+
+Again, we see trap-and-emulate in action.
+
+======================================================================
+Summary
+======================================================================
+
+To wrap up, what's the benefit of running an OS in a virtual machine?
+
+The main benefit that we've been going for is enforced modularity: we
+can share hardware between unrelated services with enforced
+modularity.  From a practical standpoint, this lets us consolidate
+servers, e.g., onto fewer machines.
+
+But there are some other cool things we can do too:
+
+- Can run different operating systems on a single machine.
+
+- Indirection tricks: can move a VM from one physical machine to
+  another.
+
+We started off this lecture talking about microkernels.  How did we
+get to VMs?  Microkernels and VMs solve orthogonal problems:
+microkernels deal with splitting up monolithic designs, and VMs let us
+run many instances of an existing OS.
+
+In the beginning we saw that monolithic kernels were these complex,
+error-prone beasts (though, to be fair, not that unreliable: we use
+them all the time).  Microkernels provided a solution to that, using a
+client/server model.
+
+However, re-designing monolithic OSes into microkernels is a
+challenge, and it's not always clear that it's worth undertaking.
+
+VMs let us safely run potentially-buggy OSes without worrying about
+crashing other OSes.  If we deem monolithic kernels to be more buggy
+than microkernels, we might think of VMs as a partial solution to
+monolithic kernels: we won't rewrite them into microkernels, but we
+will be able to run them safely.  The goal of a VM, however, is just
+to run multiple OSes on a single piece of hardware, not to target
+monolithic OSes specifically.
+
+Finally, at the end we saw that VMs are most commonly implemented with
+hardware support (a special VMM mode in addition to the U/K bit).
+This continues our theme: to truly enforce modularity, we need
+hardware support.
+

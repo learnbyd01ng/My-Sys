@@ -1,0 +1,527 @@
+6.033: Security - Introduction
+Lecture 21
+Katrina LaCurts, lacurts@mit.edu
+
+**********************************************************************
+* Disclaimer: This is the beginning of the security section in       *
+* 6.033. Only use the information you learn in this portion of the   *
+* class to secure your own systems, not to attack others.            *
+**********************************************************************
+
+======================================================================
+Introduction to Security
+======================================================================
+
+----------------------------------------------------------------------
+Previously in 6.033
+----------------------------------------------------------------------
+
+Recently in 6.033 we've been talking about building reliable systems
+despite failures.
+- GFS, replicating files in case a machine goes down
+- PNUTS, having a consistently protocol to keep things consistent
+  despite failures or slow updates
+
+We think of these failures as being more or less random, and more or
+less independent (though maybe not in the case of lightning striking a
+datacenter and killing all machines).  Machines fail with some
+probability, but there's not a person out there trying to specifically
+bring down our system.
+
+Until today.  Now we're going to start considering how to build
+systems that can deal with malicious attacks.  This is the security
+section of the course: we're going to uphold some goal despite
+actions by an adversary.
+
+----------------------------------------------------------------------
+Security in the Real World
+----------------------------------------------------------------------
+
+So what might an adversary do?  All sorts of things.
+- Personal information stolen
+- Phishing attacks
+- PCs under the control of botnets (a particular adversary that we'll
+  talk about in a few lectures)
+- Worms/viruses infect dangerous systems, e.g., uranium-processing
+  facilities
+
+Even though these are recent examples, people have more or less always
+been concerned with security.  For example, banks, the military, and
+the legal system have thought a lot about this for a long time.
+
+In 6.033, we're specifically concerned with computer security.
+Computer security has some similarities to more general security:
+
+- We try to compartmentalize.  In the world, you have different keys
+  for your car and your safe deposit box.  In systems, we use (e.g.)
+  different passwords for different accounts.  We also try to secure
+  modules individually, so we can reason about a system whose modules
+  are secure (tomorrow in recitation you'll see that this does NOT
+  mean the entire system is secure).
+
+- Log information and audit to detect compromises.  Banks do this, so
+  do systems.
+
+- Use the legal system for deterrence.
+
+Despite these similarities, there are some differences that make
+computer security unique:
+
+- The Internet makes attacks fast, cheap, and scalable
+- The number, and type, of adversaries is huge: bored teenagers,
+  criminals
+- Adversaries are often anonymous (there are no strong identities on
+  the Internet)
+- Adversaries have a lot of resources (compromised PCs in a botnet)
+- Attacks can often be automated (systems compromised faster than
+  users can react)
+
+And maybe most importantly:
+
+- Users sometimes have poor intuition about computer security
+  (misunderstand implications of important security decisions)
+
+Think about your apartment.  It's easy enough to secure that: make
+sure all the doors and windows are locked.  You can enumerate all of
+the threats (all the doors, windows that could be opened) and secure
+them properly.
+
+  Aside: You could argue that someone could smash a window or
+  breakdown a door.  True.
+
+In computer systems, we can't even do that.  You'll see throughout the
+next few lectures that it's very difficult to predict all attacks.
+
+----------------------------------------------------------------------
+What's hard about all this?
+----------------------------------------------------------------------
+
+So there are all these complications -- lots of attackers with lots of
+resources, lots of different types of threats.  There is one other
+thing that makes security really hard: it's a negative goal.  We want
+to achieve something despite whatever adversary might do.
+
+- Here's a positive goal: "Hari can read grades.txt".  I'll just ask
+  Hari to check if our systems meets this positive goal, i.e., if he
+  can read grades.txt.
+
+- A negative goal: "Sam cannot read grades.txt".  If I ask Sam if he
+  can read grades.txt, and he says no, is that enough?  No.  We have
+  to reason about all the possible ways in which Sam might get the
+  data.  How might he do this?
+
+  - Change permissions on grades.txt to get access
+  - Access disk blocks directly
+  - Access grades.txt via web.mit.edu
+  - Reuse memory after Hari's text editor exits, read data
+  - Read backup copy of grades.txt from Hari's text editor
+  - Intercept network packets to file server storing grades.txt
+  - Send Hari a trojaned text editor that emails out the file
+  - Steal disk from file server storing grades.txt
+  - Get discarded printout of grades.txt from the trash
+  - Call sysadmin, pretend to be Hari, reset his password
+  - ...
+
+  At what point can we stop?  Never.  In general, we cannot say that
+  Sam will never get a copy of grades.txt.
+
+Even though we have techniques for dealing with failures -- the
+fault-tolerance techniques that we taught you in the last section --
+it's going to be tough to use them to deal with adversaries:
+
+- One "failure" due to an attack might be one too many.  E.g.,
+  disclosing the grades file even once, launching a rocket, etc.
+
+  When a machine crashes, realistically, the worst case we lose some
+  data and have to restart the machine.  When we're thinking about
+  security, one "failure" could mean an adversary just once getting
+  access to a resource and learning some information.  Once is often
+  enough for the adversary to mount their attack.
+
+- Failures due to attack might be highly correlated.  In
+  fault-tolerance, we generally assumed independent failures.  But an
+  adversary can cause every replica to crash in the same way.  It's
+  hard to reason about failure probabilities due to attacks.
+
+In general, it's much harder to consider all possible cases with an
+adversary, and to reason about security in the face of a system with
+many complex goals.
+
+Where this leaves us:
+- No complete solution; we can't always secure every system.
+  Should've learned from yesterday's recitation: trust nothing that
+  you didn't create yourself.
+- Instead, I'm going to teach you how to model systems in the context
+  of security, and how we think about and assess risks
+- You'll also see techniques for assessing common risks.  There *are*
+  things we can do to make systems more secure.
+- We'll see a lot of trade-offs.  Particularly security
+  vs. performance, security vs. convenience, and security
+  vs. simplicity.
+
+======================================================================
+Modeling Security
+======================================================================
+
+So, how do we do that?  How do we start building secure systems?  We
+start by being clear about two things:
+
+----------------------------------------------------------------------
+1. Our goals, or our "policy"
+----------------------------------------------------------------------
+
+Security policies differ depending on the system, but here are some
+common ones:
+- Privacy: limit who can read data
+- Integrity: limit who can write data
+Those goals are both in the area of information security.  A third
+goal, related to liveness:
+- Availability: ensure that a service keeps operating
+
+Our system could have one or more of the goals above.
+
+----------------------------------------------------------------------
+2. Our assumptions, or our "threat model"
+----------------------------------------------------------------------
+
+Now, what are we protecting against?  We often don't know in advance
+who might attack or what they might do.  Adversaries may have
+different goals, techniques, resources, expertise, etc.
+
+  E.g., adversary could be a hardware vendor, software vendor, system
+  admin, etc.
+
+Moreover, as we saw in the example with Hari and Sam trying to read
+grades.txt, we can't be secure against an arbitrary adversary.  There
+was no way that we could 100% guarantee that Sam couldn't ever read
+grades.txt.
+
+So we need to make some plausible assumptions in order to make any
+progress.  These assumptions are known as our threat model.
+
+Some examples:
+
+- Assume that the adversary controls some computers or networks but
+  not all of them
+- Assume that then adversary controls some software on computers, but
+  doesn't fully control those machines
+- Assume that the adversary knows some information, such as passwords
+  or encryption keys, but not all of them
+
+(Different systems will have different threat models.  The ones above
+ are not the only threat models, nor do they necessarily all apply to
+ every system)
+
+It can be tough to get the threat model correct.  Many systems are
+compromised due to incomplete threat models...
+
+- Assume the adversary is outside of the company network/firewall when
+  they're not
+- Assume the adversary doesn't know legitimate users' passwords when
+  they do
+- Assume the adversary won't figure out how the system works when they
+  will
+
+...and also due to unrealistic threat models
+
+- Assume that the adversary knows about bugs in your software
+- Assume that the adversary can physically attack you
+- Assume that the adversary can perform social engineering
+
+What to do?  If we underestimate threats, our system won't be secure.
+If we overestimate threats, we might not be able to make any progress
+(what are we going to do against an adversary that can physically
+attack us?).  Moreover, not all threats are equally important, and
+stronger requirements can lead to more complexity, which can lead to
+subtle security problems.
+
+It's generally a bad idea to be over-ambitious with your threat model.
+It's very hard to design modular security solutions that encompass
+everything.  We're much more likely to have, e.g., a solution for an
+adversary who has access to the network but not the machine, a
+solution for an adversary who has access to the machine, etc.
+
+Once we have a threat model, we can reason about our assumptions and
+solutions.  We can also evolve the threat model over time.  When a
+problem occurs, we can figure out exactly what went wrong a re-design.
+
+So to re-cap, whenever we talk about how to secure a particular system
+(or a particular part of a system), we're going to start with two
+things:
+1. An explicit statement of our policy, or the security goals we're
+   trying to meet
+2. An explicit statement of our threat model, or the assumptions we're
+   making about our adversaries
+
+======================================================================
+Guard Model
+======================================================================
+
+Let's go back to Day 1 of 6.033.  We have a client/server model.  How
+do we frame this in terms of security?
+
+In most cases, the client is making a request to access some resource
+on the server.  So we're worried about security at the server (i.e.,
+that resource is the thing we want to keep secure -- maybe it's a file
+like grades.txt).
+
+                                 Server
+                 Client ----> [ resource ]
+
+To attempt to secure this resource -- and noticed that I haven't given
+you a threat model or a policy yet -- the server needs to check all
+accesses to the resource.  This is known as complete mediation: the
+system is mediating every action requested.
+
+To do this, the server will put a "guard" in place to mediate every
+request for this particular resource.  The guard makes all the access
+control decisions.  Thus, the only way to access the resource is to
+use the guard.
+
+                                Server
+             Client ----> [ guard | resource ]
+
+To clarify, we can use our favorite example.  Suppose we're using
+Katrina's Amazing Web Service again, and buying fish tanks.  KAWS
+allows users to log in to check their order status.  So we might
+perform an action where we send a request to log in to the server and
+do that.  The resource we're requesting is our order status (more
+accurately, maybe the web page that contains our order status).
+
+----------------------------------------------------------------------
+Designing the Guard
+----------------------------------------------------------------------
+
+What about the guard?  In this example, the guard is the part of the
+system that checks that our account information (most likely:
+username, password) is correct and that we have access to the
+resource.
+
+More generally, the guard often provides these things:
+
+1. Authentication: verify the identify of the principal.  E.g.,
+   checking the client's username and password.
+
+2. Authorization: verify whether the principal has access to perform
+   its request on the resource.  E.g., by consulting an access control
+   list for a resource.
+
+This model is known as the guard model of security.  It applies not
+just to a client/server situation, but to any system where a client
+requests to perform an an action on a particular object.
+
+We've already made a few assumptions with this model:
+
+1. The adversary should not be able to access the server's resources
+   directly.  So, for instance, we have to assume that the OS enforces
+   modularity, or run the server on a separate machine.
+
+2. We must ensure that the server properly invokes the guard in all
+   the right places.
+
+For now, assume that they are valid; I'll talk about what might go
+wrong later.
+
+The reason we're using the guard model is that systems that use it
+avoid many common pitfalls.  It makes it easier to reason about
+security when there's an explicit process required to access a
+resource (client has to send a request, guard mediates it).  As I've
+iterated over and over this lecture, we can't achieve perfect
+security, but we can achieve better security, and this is a step in
+that direction.
+
+----------------------------------------------------------------------
+Examples
+----------------------------------------------------------------------
+
+To make this clearer, let's put some examples in the context of our
+model.  For each example, we'll look at a few things: what the
+client/server/resource in question are, how mediation is performed by
+the server, and how authentication/authorization work.
+
+1. UNIX file system
+
+   client: a process
+   server: OS kernel
+   resource: files, directories
+   client's requests: read(), write() system calls
+
+   mediation: U/K bit and the system call implementation
+   principal: user ID
+   authentication: kernel keeps track of a user ID for each process
+   authorization: permission bits & owner UID in each file's inode
+
+2. Web server running on UNIX
+
+   client: HTTP-speaking computer
+   server: web application (let's say it's written in python)
+   resource: wiki pages (say)
+   requests: read/write wiki pages   
+
+   mediation: server stores data on local disk, accepts only HTTP
+              requests (this requires setting file permissions, etc.,
+              and assumes the OS kernel provides complete mediation)
+   principal: username
+   authentication: password
+   authorization: list of usernames that can read/write each wiki
+                  page
+
+3. Firewall.  (A firewall is a system that acts as a barrier between
+   a, presumably secure, internal network and the outside world.  It
+   keeps untrusted computers from accessing the network.)
+
+   client: any computer sending packets
+   server: the entire internal network
+   resource: internal servers
+   requests: packets
+
+   mediation:
+      - internal network must not be connected to internet in other
+        ways.
+      - no open wifi access points on internal network for adversary
+        to use.
+      - no internal computers that might be under control of
+        adversary.
+    principal, authentication: none
+    authorization: check for IP address & port in table of allowed
+                   connections.
+
+Notice that in that last one, the server wasn't a single machine, and
+authentication wasn't done.  That's okay.
+
+There are typically multiple instances of this model present in any
+system.  For instance, we could have a UNIX filesystem and a webserver
+on the same machine (so we'd see #1 and #2 at once).
+
+======================================================================
+What can go wrong?
+======================================================================
+
+The guard model seems straightforward.  So what goes wrong?  What's
+preventing perfect security here?
+
+1. Complete mediation is bypassed by software bugs
+
+   - All ways to access resource must be checked by guard.  Common
+     estimate: one bug per 1000 lines of code
+
+2. Complete mediation is bypassed by an adversary
+
+   - Adversary may trick server code to do something unintended and
+     bypass the guard. (e.g., SQL injection -- see demo)
+
+   In recitation tomorrow, you'll see more examples of adversaries
+   bypassing mediation.
+
+How do we (try to) prevent these things?  Any component that can
+arbitrarily access a resource must invoke the guard; bugs/mistakes
+lead to incomplete mediation.
+
+The general plan is to reduce complexity: reduce the number of
+components that must invoke the guard.  For instance, in our SQL demo,
+we could arrange for the DB server to check permissions on records
+returned.  Then the security would not depend as much on lookup.cgi.
+
+In security terminology, this is often called "principle of least
+privilege".  Privileged components are "trusted".  Surprisingly, we
+want to limit the number of trusted components in our systems.  Why?
+If a trusted component breaks, that's bad.  If an untrusted component
+breaks, who cares.
+
+Good design has few trusted components, because other things don't
+affect security.
+
+What else goes wrong?
+
+3. Policy vs. mechanism.
+  
+   High-level policy is (ideally) concise and clear.  Security
+   mechanisms (e.g., guards) often provide lower-level guarantees.
+
+   For instance, our policy is that students cannot get a copy of
+   grades.txt.  What should the permissions on the files be?  What
+   should the firewall rules be?
+
+   We try to line up security mechanisms with desired policies, but
+   it's not always easy.
+
+4. Interactions between layers, components.
+
+   Consider this code:
+
+   > cd /mit/bob/project
+   > cat ideas.txt
+   Hello world.
+   ...
+   > mail alice@mit.edu < ideas.txt
+
+   Seems fine.  But suppose in between us cat'ing ideas.txt and
+   mailing Alice, Bob changes ideas.txt to a symlink to grades.txt.
+
+5. Users make mistakes.
+
+   Social engineering, phishing attacks.  In general, our threat model
+   should not assume that users are perfect.
+
+6. Cost of security.
+
+   Users may be unwilling to pay cost (e.g., inconvenience) of
+   security measures.
+   
+     E.g., system requires frequent password changes -> users may
+     write them down.
+   
+   How far should 6.033 staff go to protect the grades file?  Put the
+   file on a separate computer, to avoid sharing a file system?
+   Disconnect computer from the network, to avoid remotely exploitable
+   OS bugs?  Put the server into a separate machine room?  Get a guard
+   to physically protect the machine room?
+
+   Good idea: cost of security mechanism should be commensurate with
+   value.  Most security goals/policies not infinitely valuable, can
+   tolerate attacks.  Security mechanisms can be expensive (e.g.,
+   wasted user time).
+
+======================================================================
+Summary
+======================================================================
+
+----------------------------------------------------------------------
+Summary of Today
+----------------------------------------------------------------------
+
+- Adversarial attacks are different from the failures we looked at in
+  the previous section of 6.033.  They're targeted, rarely random, and
+  rarely independent.  Moreover, one successful attack can be enough
+  to bring down the system.
+
+- When we want to secure a system, it's important to specify our
+  policy (goals) and threat model (assumption).  this makes it easier
+  to reason about the system.
+
+- The guard model of security uses complete mediation to secure a
+  system.  things *can* go wrong with systems that implement the guard
+  model, but it's a good starting place.  systems that use this avoid
+  many common pitfalls.
+
+----------------------------------------------------------------------
+Where we're Headed
+----------------------------------------------------------------------
+
+- Now you have a framework to think about security
+
+- This part of the course isn't going to have a nice story like OS
+  did: "How do we enforce modularity in a single machine?" doesn't
+  have an analog in "How do we achieve perfect security?"
+
+- Instead, I'm going to show you some common attacks, and the
+  solutions we have in place to prevent them, and the trade-offs we
+  make in security
+
+- The most important thing I want you to be able to do is assess the
+  security of a system.  Given system x, what are the relevant threat
+  models?  What types of attacks could happen?  What
+  protocols/techniques exist to mitigate some attacks.
+
+- With each lecture, we'll (more or less) look at a different threat
+  model.  We'll also see some recent examples of security exploits.

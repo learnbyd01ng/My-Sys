@@ -1,0 +1,625 @@
+6.033 - Operating Systems: Performance
+Lecture 8
+Katrina LaCurts, lacurts@mit.edu
+(many ideas taken from Frans Kaashoek's notes)
+
+======================================================================
+Previous lectures
+======================================================================
+
+We've spent a lot of time enforcing modularity in this class.  We
+started with the client/server model + naming, and then moved to
+getting such a system to work on a single physical machine.  Operating
+systems take care of that for us via virtualization -- virtual memory,
+bounded buffers, and threads -- and abstraction -- system calls.  This
+lets us run multiple user programs at once on a single machine, all of
+which are protected from each other.  Similarly, the kernel -- the
+entity providing the enforcement here -- is protected from the user
+programs.
+
+In the last lecture, we saw that despite doing a great job enforcing
+modularity between user programs and between itself and user programs,
+most kernels don't enforce modularity within themselves: they are
+monolithic kernels.  Monolithic kernels tend to be incredibly complex.
+
+Microkernels, on the other hand, provide a more modular kernel
+structure, but given that many existing kernels are monolithic, it's
+not clear that rewriting them to microkernels is a good use of
+developers' time (it's actually not even clear that microkernels are
+objectively better than monolithic kernels, despite the more modular
+design.  After all, communication costs are higher, and if something
+like the file system crashes, the OS is effectively unusable whether
+the file system exists outside of the kernel or not).
+
+So given that we're going to live in a world of monolithic kernels for
+the near future, we're going to need to deal with kernel bugs.  A
+kernel bug can take down the entire OS.  We studied the technique of
+virtual machines, which let us run multiple OSes (could be multiple
+copies of the same OS, or entirely different OSes) on the same
+physical machine.  A kernel bug will still bring down the respective
+OS, but the other OSes will be okay.
+
+The main issues we solved to get this to work involved the virtual
+machine monitor (VMM).  The VMM needs to virtualize the physical
+hardware.  At a high-level, it traps an emulates: trapping interrupts
+from the guest OSes, and emulating the instructions.  We dealt with
+how that emulation works in a few different scenarios (memory, U/K
+bit, disk), and how the VMM can trap instructions that don't generate
+interrupts.
+
+So now, what's left?  We've seen how modularity influences the design
+of operating systems.  What's left is to talk about performance.  How
+do we get our systems (operating or otherwise) to not just work, but
+to work well, and how does that influence design?
+
+======================================================================
+Performance and System Design
+======================================================================
+
+The performance requirements of a system can significantly influence
+the system's design, especially as a system sees an increase in load
+or scale.  When we talked about DNS, we discussed the original method
+for resolving hostnames: the hosts.txt file.  This method worked fine
+initially, but when the Internet grew, we had to re-design things to
+get hostname resolution to perform well.
+
+Today we're going to discuss some general techniques for improving
+performance particularly as load increases.  The simplest way to do
+this is to just buy new hardware.  After all:
+- Moore's Law tells us that the number of transistors per die should
+  double every 18 months, which should lead to a doubling of overall
+  processing power.
+- DRAM density increase over time
+- Disk price (per GB) also decreases about 30-35% per year
+
+However not all aspects of a system improve at the same pace: DRAM
+access latency doesn't improve at the same pace that processor speed
+does; network latency improves very slowly (and is bottlenecked by the
+speed of light, which doesn't change at all).  Moreover, Moore's Law
+is plateauing, so we're not seeing CPU speeds double every 18 months
+anymore.
+
+Finally, even when technology does improve, it doesn't always keep up
+with the rate at which load increases.  Thus, instead of relying on
+technological improvements, we need to design systems to perform well,
+and potentially re-design them as load increases.
+
+How do we deal with re-designing to improve performance?  The first
+thing to do is figure out what part of the system is actually the
+problem.
+
+----------------------------------------------------------------------
+Approaching Performance Problems
+----------------------------------------------------------------------
+
+So let's return to Katrina's Awesome Web Suite, which, as always,
+we're using to allow users to buy fish tanks.  Here are some
+components of a KAWS set-up:
+
+Client --> Network --> Server CPU --> Server disk
+
+(Presumably there will be more than a single client)
+
+Lately KAWS users have been complaining that the system is too slow.
+What should we do?  Two things:
+
+1. Measure the system to find the bottleneck, i.e., the portion that
+   is limiting performance.  This could be any component: the clients
+   themselves, the network, the server CPU, the disk.  In the best
+   case, there is a dominating bottleneck, but things could get more
+   complicated.
+
+     Aside: In 6.02, we specifically talked about bottleneck links,
+     which was the link in a network that capped our throughput.  The
+     concept of a bottleneck is more general, however; the bottleneck
+     in a system need not be a network link.
+
+2. Relax the bottleneck, i.e., improve whatever part of your system is
+   limiting performance.  This improvement might be adding hardware,
+   changing the system design, etc.
+
+----------------------------------------------------------------------
+Performance metrics
+----------------------------------------------------------------------
+
+To complete step 1 ("measure the system"), we need to talk about
+performance metrics.  There are two big ones:
+
+1. Throughput.  Throughput is a measure of number of requests over a
+   unit of time.
+
+   In 6.02, you've seen throughput applied to networks, where we
+   talked about how many packets we could send over a network every
+   second (or minute, etc.).  But we can also talk about the
+   throughput of a disk: how many reads can it handle per second, how
+   many writes per second, etc.
+
+2. Latency.  Latency is the amount of time for a single request.
+
+   Again, in 6.02, you've seen latency in networks: the time it takes
+   for a packet to traverse the network.  Like throughput, we could
+   also talk about disk latency: the time it takes for a single read
+   (or write) to complete.
+
+Sometimes these quantities are inverses.  If 1 request takes .1
+seconds of CPU, then a single CPU can handle 10 requests per second.
+But often they are not inverses:
+
+- Consider concurrency: with 2 CPUs, a .1 second latency means we can
+  handle 20 requests per second total.
+
+    Aside: You've seen pipelining in 6.004.  That is a form of
+    concurrency.
+
+- Consider queues: if it takes .1 seconds to handle a request, and
+  there are 10 jobs in the queue, the throughput is 10 requests per
+  second but the latency is 1 second.
+
+Let's see what happens to these two quantities as a system becomes
+more heavily-loaded (as users increase).
+
+- To begin, latency and throughput are low.  As users begin to enter
+  the system, latency stays flat; new users are consuming resources
+  that were previously idle.  Throughput increases, because the system
+  is serving more requests (from more users).
+
+- As the system transitions from being lightly-loaded to
+  heavily-loaded, latency begins to increase, as queues increase.
+  Throughput, however, flattens; once we reach maximum throughput, we
+  can't serve requests any faster.
+
+For heavily-loaded systems, we focus on improving throughput as it
+helps us understand the limitations of the system.  Latency *is* still
+important, though; if it increases too much, that leads to poor
+usability.
+
+----------------------------------------------------------------------
+Measuring the system
+----------------------------------------------------------------------
+
+Back to KAWS.  Our first step is going to be to measure the throughput
+of each component.  But throughput alone isn't so meaningful.  For
+instance, if I tell you that the disk is handling 100 requests per
+second, is that good or bad?  We need to compare that number to how
+many requests per second the disk *can* handle.
+
+This leads us to utilization: given the number of requests that a
+particular part of the system *can* handle, utilization is the
+percentage that it *is* handling.
+
+  E.g., if a link that can send 50 bytes per second, and it is
+  currently being used to send 25 bytes per second, it's 50% utilized.
+
+So we'll start off by measuring the utilization of each resource in
+our system.  Sometimes this leads to an obvious bottleneck:
+
+  CPU is 100% utilized, disk is 20% utilized => CPU is the bottleneck,
+  not the disk.
+
+Other times not:
+
+  CPU is 50% utilized, disk is 50% utilized, but at alternating times.
+
+In addition to measuring, and as part of figuring out the utilization
+of our system, we should have a model in place.  Modeling the system
+gives us a sense of what level of performance we can expect from each
+component, and applies to latency as well as throughput.
+
+  E.g., if we expect the network to have a 10msec latency, CPU to have
+  50msec latency, and disk to have 10msec, a 1second CPU latency would
+  indicate a problem with the CPU.
+
+Modeling is helpful in estimating bottlenecks in the overall system
+design as well as debugging components that aren't performing as
+expected.
+
+We use our measurements and models to guess where the bottlenecks might
+be.  In a complex system, bottlenecks may not be obvious even with
+measurement data.  So we iterate on guesses based on the above
+approaches, fix candidates bottlenecks, and see what happens.
+
+----------------------------------------------------------------------
+Fixing a bottleneck
+----------------------------------------------------------------------
+
+Once we find a bottleneck, how do we fix it?  Maybe we make the
+application code itself more efficient.  E.g., better algorithms,
+fewer features, etc.  These techniques are important and can give
+significant wins.
+
+However, 6.033 cannot help you here; those techniques are
+application-specific.  In 6.033, we focus on generally-applicable
+system performance techniques.  Today, I'm going to focus on the
+techniques that an operating system might provide (though these
+techniques can be used in other places in the system):
+- Batching
+- Caching
+- Concurrency (I/O concurrency and parallel hardware)
+- Scheduling
+
+For the rest of this lecture, I'm going to give you examples of these
+techniques.  The examples will deal with operating system issues,
+since that's what we've been studying so far.
+
+======================================================================
+Example Performance Analysis: Disk throughput
+======================================================================
+
+In real systems, the disk is often the main bottleneck:
+- Disk capacity doubles every year
+- Processor power doubles every 1.5 years (though that is leveling
+  off)
+- Memory density doubles every two years
+- Disk seek rate doubles about every ten years
+
+Thus, it is critical to use disk effectively.  To do this, we need to
+understand how a disk works.
+
+What does a disk actually look like?  There are several round platters
+on a common rotating axle, which continuously rotate while the disk is
+powered up.  Each platter has circular tracks on either side.  These
+tracks are divided into sectors stored linearly along the track.
+Inner tracks have fewer sectors than outer tracks.
+
+The disk arm has one head for each surface, all of which move together
+to some track.  A group of aligned tracks is called a cylinder, and
+can be read at the same time.
+
+Each disk head reads/writes sectors on a track as they rotate past
+it.  Thus, the size of the sector -- typically 512 bytes -- is the
+unit of a read/write operation.
+
+To do a read or write, the following has to happen:
+1. "Seek" the arm to the desired track
+2. Wait for the platter to rotate the desired sector under the head
+3. Read or write bits as the platter rotates.
+
+Let's figure out how long this might take with a real disk.  The
+Hitachi 7K400 has a capacity of 400GB, 5 platters, and 10 heads.
+There are 567-1170 sectors per track (inner-to-outer), and 512 bytes
+per sector.  The disk spins at 7200 RPM, which means each revolution
+takes 8.3ms.
+
+1. Seeking the arm to the desired track depends on how far it needs to
+   go.  For the 7K400, the average read seek time is 8.2ms, and the
+   average write seek time is 9.2ms (writes need more seek time for
+   accuracy).
+
+2. Rotation time: Since one full rotation takes 8.3ms, this could take
+   anywhere from 0-8.3 ms.  (platters only rotate in one direction)
+
+3. To read or write as the platter rotates, the 7K400 can do between
+   35 and 62MB/sec (inner to outer)
+
+So reading a random 4KB block takes:
+  8.2ms seek + 4.1ms rotate + ~.1ms read = 12.4ms
+
+4096 bytes / 12.4 ms = 322 KB/s.  So less than 1% of the time is spent
+reading data; 99% is spent moving the disk.  A significant bottleneck
+in a system!
+
+Can we do better?  One way to do better may be to use a different disk
+technology; say flash memory instead of a magnetic disk.  We'll come
+to that.  Let's stick with magnetic disks for the time being.
+
+Suppose we batched individual transfers into long sequential ones?
+- .8ms to seek to next track + 8.3ms to read entire track = 9.1ms
+  (.8ms is the single track seek time for the 7K400)
+- 1 track contains ~1000 sectors * 512 bytes = 512KB
+- Resulting throughput: 512KB/9.1ms = 55MB/s
+
+This is quite fast, and less likely to be a bottleneck in a system.
+
+So what design lessons do we get from this?  Primarily; avoid random
+access.  If we can do long sequential reads instead of small random
+ones, we'll get better performance.  Thus, we'd like a way to *batch*
+small reads into long contiguous ones.
+
+However, we can't just magically do that.  Our data needs to be laid
+out on disk such that this happens (reading an entire track's worth of
+data is pointless if you don't actually need the data on that track).
+Two heuristics:
+- If your system reads/writes entire big files, lay them out
+  contiguously on disk.  This can be hard to achieve in practice: the
+  file system must allocate contiguous sectors as the application
+  writes data, and fragmentation gets in the way.
+- If your system reads lots of small pieces of data, group them.  In
+  UNIX, originally the dir inode, dir entry, file inode, indirect
+  block, and data block could all be located in a different part of
+  the disk. In modern filesystems, the dir+inodes+data are all on
+  nearby tracks to minimize seeks.
+
+======================================================================
+Example: Caching
+======================================================================
+
+Now you know about batching, and have an understanding of why it can
+improve performance.  Let's turn to another performance technique:
+caching.
+
+You saw caching as part of DNS, where name-servers store mappings that
+they've recently discovered.  This improved performance in DNS since
+if a result is cached, we can avoid walking the tree to discover the
+mapping (walking the tree requires some number of network
+round-trip-times to get a response).
+
+But, as you should know from 6.004, caching can happen in all sorts of
+other places.  For example, in your computer's memory.  Most OSes use
+DRAM to remember recently-read sectors.  Why DRAM?  It's faster than
+disk.  This technique works especially well if a system has spare CPU
+and DRAM, but a busy disk.
+
+Like batching, caching is common performance-enhancement for systems.
+But how well does it work, and what details to we need to understand
+to make a cache work for a particular system?
+
+----------------------------------------------------------------------
+Analyzing cache performance
+----------------------------------------------------------------------
+
+To answer "how well does it work", we need a way to quantify the
+performance benefits of caching.  Typically, we look at average access
+time:
+
+  avg access time = hit_time * hit_rate + miss_time * miss_rate
+
+Example: Suppose we have 100 sectors, and 90% of the accesses are for
+just ten of those sectors.  If we have a cache that holds those ten
+sectors, then:
+
+  hit_rate = .9, miss_rate = .1
+
+Suppose that a read from the cache is effectively instantaneous, and
+that a read from disk takes 10ms.  Then:
+
+  hit_time = 0ms, miss_time = 10ms
+
+Then, avg access time with cache = .9 * 0ms + .1 * 10ms = 1ms.  Avg
+access time without the cache is 10ms.
+
+----------------------------------------------------------------------
+Eviction policies
+----------------------------------------------------------------------
+
+Now for some details.  In the example above, caching improved
+performance because our hit rate was high (effectively because we had
+the correct 10 sectors in the cache).  In general, how do we know what
+should go in the cache?  After all, having a cache, but a very low hit
+rate to the cache, is not going to improve performance.
+
+Since DRAM is much smaller than disk, we can't keep everything in the
+cache.  Ideally, we want to cache things that we're going to need
+again or need soon.  But how do we know?
+
+We need an eviction/replacement policy for our cache.  Our goal is to
+evict data from the cache that's unlikely to be used soon.  A common
+policy is least-recently used (LRU): we evict the least-recently used
+element from the cache.  The intuition here is that if data has been
+used recently, it's likely to be used again.  This works well for
+popular data (e.g., UNIX root directory).
+
+LRU doesn't always work well: imagine a set of data larger than the
+cache, that is access sequentially.  LRU will evict all useful data.
+What's the better plan?  Random access?  Don't cache sequential
+access?
+
+There isn't one eviction policy to rule them all.  Indeed, there are
+some times when caching doesn't work well at all:
+- Caching works well if all of the data fits into a cache, or if
+  there's locality:
+  - Temporal locality: small subset of data accessed frequently (e.g.,
+    home directories of users that are currently logged in).  LRU
+	works well here.
+  - Spatial locality: some pieces of data are accessed together (e.g.,
+    all inodes in a directory).  A policy that pre-loads nearby data
+    works well.
+- But not all access patterns have locality.
+
+Additionally, caching often cannot help with writes.  Reads are easy
+to cache, whereas writes often must go to disk in case of a crash
+(cache is volatile memory) (writes must also go to the cache for
+consistency).  Thus, caching is not as effective for write-intensive
+applications.  The worst case is many random writes (e.g., mail server
+storing new messages in small files).  We'll look at techniques later
+to cope with writes (e.g., logging).
+
+To summarize caching: A high hit rate can lead to drastically improved
+access time.  Caching works well when there is data locality, but not
+every workload fits that.
+
+To build a good cache for a system (and thus a good eviction policy),
+designers need to understand the details of how data will be
+accessed.  Draw parallels between this and the previous section: To
+improve disk performance we needed to understand details of how the
+disk worked.
+
+======================================================================
+Example: Concurrency/scheduling
+======================================================================
+
+Let's return one last time to Katrina's Amazing Web Suite.  Suppose
+that the server alternates between computing and waiting for the disk:
+
+    CPU:  --A--     --B--     --C--
+    Disk:      --A--     --B--     --C--
+
+This means that both are idle half the time.  If we could overlap A's
+disk I/O with B's CPU, we'd be able to double throughput.  This
+requires a way to concurrently execute many activities.
+
+You know one such way: threads!  The OS can call wait() while waiting
+for disk, to let other threads run.  A disk interrupt will notify()
+when data is available.  Now we can have:
+
+    CPU:  --A----B----C-- ...
+    Disk:      --A----B-- ..
+
+These types of problems are scheduling problems.  When scheduling
+threads, we see that different orders of execution can lead to
+different performance.
+
+  Example: Suppose five concurrent threads issue disk reads for the
+  following sectors:
+
+    71 10 92 45 29
+
+  A naive algorithm will seek to each sector in turn.  This is
+  expensive.  A better algorithm is to sort by track and perform reads
+  in order (this is the "elevator algorithm"):
+
+    10 29 45 71 92
+
+  Now each seek is shorter (closers to 1ms than 8-15ms).  If our
+  backlog becomes larger, we will likely see even smaller seeks
+  between adjacent requests.  Thus we get higher throughput as load
+  increases.
+
+  Are there any drawbacks?  Yes: this algorithm is unfair.  An early
+  request may be delayed until much later.
+
+As always, there's no one right answer here.  Different scheduling
+algorithms have to trade off performance and fairness.  The most naive
+scheduling algorithms often result in poor performance.
+
+======================================================================
+Example: Parallelism
+======================================================================
+
+So we've dealt with using a CPU concurrently, or in parallel.  We can
+extend this notion to disks, too.  We'll have multiple physical disks
+-- let's say two -- and potentially use both of them at once.
+Remember that disk access is often a bottleneck, so if we can access
+two disks at the same time, we can increase throughput without a
+significant (or potentially any) increase in latency.
+
+But now we have a new problem: how do we split data across multiple
+disks?  For this exercise, we're going to assume that we have more
+data than fits on one disk.
+
+The solution depends on our original bottleneck.
+
+  Scenario 1: Many requests, perhaps for many small files.  Here, we
+  are limited by disk seeks.  To use multiple disks in parallel, we
+  can put each record (e.g., file) on a single disk, and allow
+  multiple disks to seek multiple records in parallel.
+
+  Scenario 2: Few large reads.  Here we are limited by sequential
+  throughput.  Putting each file on one disk will not work, because
+  only one is active at a time.  The solution is to stripe each file
+  across disks.
+
+    E.g., first 1MB on disk 1, second 1MB on disk 2, third 1MB on disk
+    3, etc.
+
+  When an application issues large read, it can read data from disks
+  in parallel.
+
+----------------------------------------------------------------------
+Parallelism on computers
+----------------------------------------------------------------------
+
+Another way to use parallelism is to balance work across many
+computers.  When doing that, however, we have to deal with one (or
+more) of the machines failing, and also have to think about how to
+program everything.  You will hear more about this in recitation
+tomorrow, when you study MapReduce.
+
+======================================================================
+Alternative Technologies
+======================================================================
+
+We've talked a lot now about how to improve the performance of a hard
+disk through batching, caching, scheduling, and parallelism, all of
+which can improve access times for reads.
+
+Another solution, however, is to forget hard disks and use a different
+storage technology.  For instance, solid-state disks (SSDs).
+Typically SSDs are flash memory that exports a disk interface.
+
+  Aside: SSDs don't strictly *have* to use flash memory.
+
+Flash memory has no moving parts -- is it much faster than a
+rotational disk?
+  
+  Example: OCZ Vertex 3: 256GB SSD disk.
+    Sequential read:  400 MB/sec.
+    Sequential write: 200-300 MB/sec.
+    Random 4K reads:  5700/sec (23MB/s)
+    Random 4K writes: 2200/sec (9MB/s)
+  Sequential access still much faster than random access.
+  
+From those numbers, we can see that write performance is noticeably
+worse.  This is because flash can only erase large units (e.g.,
+512KB).  Writing a small block, then, requires reading 512KB,
+modifying, and writing back.
+
+Modern SSDs have complex controllers that try to optimize this.  We'll
+look at one technique useful here (logging) in later lectures.
+
+Despite performance, flash isn't always the answer: SSDs are much more
+expensive than HDDs.  A quick search on newegg.com will find you a 1TB
+SSD for about $400, and a 1TB HDD for about $50.
+
+  Note, though, the price gap used to be way worse.  When SSDs were
+  first marketed commercial, SSDs were ~20x more expensive than HDDs.
+
+Moreover, many performances issues are still the same:
+- Both HDDs and SSDs are slower than RAM
+- We can still avoid small writes using batching
+
+So for the most part, even as technology improves, the performance
+techniques we saw earlier still apply.
+
+======================================================================
+Summary
+======================================================================
+
+We started off today discussing how to solve performance problems in
+general: we measure/model the system to (try to) determine the
+bottleneck, and then relax the bottleneck.  In practice, of course,
+this is complicated.
+
+We then went into specifics with disk access, which is a common
+bottleneck in systems.  We saw a few general techniques that are
+helpful in improving disk throughput:
+- Batching: batch lots of small writes together to avoid multiple
+  seeks
+- Caching: put frequently used items in the cache, where access is
+  faster
+- Concurrency/scheduling: schedule accesses in such a way that
+  throughput increases
+- Parallelism: spread data over multiple disks smartly to increase
+  throughput
+
+None of these techniques are things that we can just magically apply
+without any thought; each require an understanding of what's going on
+"underneath".  For batching, that's an understanding of how disk
+accesses work.  For caching, it's an understanding of access
+patterns.  For scheduling/concurrency, it's a combination of how disk
+accesses work and how the system is being used (i.e., the workload its
+handling).  For parallelism, it's an understanding of the workload
+(many small reads vs. few large ones).
+
+This lecture is extremely relevant to your life now as you think about
+your design project.  Think about both how you might measure the
+performance of your system (in terms of what metrics -- latency and
+throughput aren't the only two), what parts of it are likely to be
+bottlenecks, and how you might improve those bottlenecks.
+
+I will also leave you with some important numbers so that you can
+start to model any future systems (note: these are orders of
+magnitude, not exact calculations.  getting more precise numbers would
+be necessary when designing real systems.)
+
+Latency:
+- 0.00000001ms: instruction time (1 ns)
+- 0.0001ms: DRAM load (100 ns)
+- 0.1ms: LAN network
+- 10ms: random disk I/O
+- 25-50ms: Internet east -> west coast
+
+Throughput:
+- 10,000 MB/s: DRAM
+- 1,000 MB/s: LAN (or100 MB/s)
+- 100 MB/s: sequential disk (or 500 MB/s)
+- 1 MB/s: random disk I/O

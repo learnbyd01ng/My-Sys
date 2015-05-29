@@ -1,0 +1,516 @@
+6.033: Security - Secure Channels
+Lecture 23
+Katrina LaCurts, lacurts@mit.edu
+
+**********************************************************************
+* Disclaimer: This is part of the security section in 6.033. Only    *
+* use the information you learn in this portion of the class to      *
+* secure your own systems, not to attack others.                     *
+**********************************************************************
+
+======================================================================
+Last time
+======================================================================
+
+Last time we talked about how one might authenticate a user via
+passwords.
+- Salted hashes
+- How to deal with practical issues such as not re-transmitting
+  passwords over and over (use session cookies), phishing (numerous
+  ways to deal with this), and bootstrapping.
+- Those details illuminated some broader insights: don't store private
+  data in the clear, think about human factors when designing secure
+  systems, be explicit about your goals, etc.
+- And also: hash functions are very useful.
+
+In that, our threat model was an adversary with some level of access
+to the server (the level of access depended on the attack we were
+considering).  We did not consider what's going on on the network
+between the client and server.
+
+Today, we're going to extend our threat model to deal with network
+adversaries.
+
+======================================================================
+Adversaries in the Network
+======================================================================
+
+What can an adversary in the network do?  Most anything; most networks
+don't provide security guarantees:
+- Observe packets
+  - Easy on local network
+  - Might be possible over Internet if adversary changes DNS
+- Corrupt packets
+- Inject packets
+  - Can be done from almost anywhere
+- Drop packets
+
+Can we combat some of these things?
+- Dropped packets, a TCP sender will retransmit
+- Corrupted packets, a TCP receiver will use a checksum and detect
+  that (and then drop the packet, triggering a retransmit)
+
+What about a carefully corrupted, injected, or sniffed packet?  We
+need a new plan.
+
+Today we're going to focus on preventing an adversary in the network
+from observing or tampering with the contents of our messages.  Our
+goals -- our policy -- are twofold:
+
+1. Confidentiality: adversary cannot learn message contents
+
+2. Integrity: adversary cannot tamper with message contents
+
+   More accurately, if the adversary tampers with the message
+   contents, the sender and/or receiver will detect it.
+
+If we can do this, we'll have what is known as a "secure channel".
+
+Most of this lecture will focus on how secure channel protocols are
+built.  At the end, I'll give you some of the details of one protocol
+in particular.
+
+======================================================================
+Secure Channel Abstraction
+======================================================================
+
+Our basic abstraction will be that we send and receive messages, just
+as before, but protected from an adversary.  To ensure
+confidentiality, we're going to encrypt the message.
+
+----------------------------------------------------------------------
+Cryptographic Primitives
+----------------------------------------------------------------------
+
+1. Encrypt(k, m) -> c ; Decrypt(k, c) -> m
+   
+   Encrypt takes a key k and a message m and outputs a ciphertext c.
+   c is similar in length to m.  Decrypt does the reverse; given k and
+   c, it outputs m.
+
+   Given the ciphertext c, it is virtually impossible to obtain the
+   plaintext m without knowing k.  Thus, it's important to keep k a
+   secret.
+
+This seems great for confidentiality.  If, instead of sending m we
+send c, and the adversary intercepts c, will it be able to figure out
+m?  No, unless it has the key.
+
+However, encryption does not provide integrity.  Why?
+- Perhaps the adversary could change some bits in the ciphertext,
+  which means it will decrypt to a different message.  The receiver
+  might receive a corrupted message, but there are some cases where
+  that is enough to make an attack.
+- There are also mathematical reasons that we don't have time to get
+  into.  See here:
+
+  http://security.stackexchange.com/questions/33569/why-do-you-need-
+  message-authentication-in-addition-to-encryption
+
+  Or section 11.4.4 of the course textbook.
+
+To ensure integrity, we're going to add a "message authentication
+code".
+
+2. MAC(k, m) -> t
+
+   MAC -- for Message Authentication Code -- takes a message m and a
+   key k and outputs a fixed-length string t.  Without knowing the
+   key, k, it's difficult to compute t.
+
+   This is a lot like the hash functions we saw last week.  The
+   primary difference is that MAC uses a key; you might -- and some do
+   -- call it a "keyed hash function".  With normal hash functions,
+   it's easy for an adversary to compute the hash of a message.  With
+   MACs, the adversary can't do this unless they know the key.
+
+   Aside 1: There are other differences.  For instance, MACs are not
+   always subject to the same mathematical requirements as
+   cryptographic hash functions.
+
+   Aside 2: "MAC" is, unfortunately, an overloaded acronym in
+   systems.  In 6.02 you learned MAC Protocols.  There, MAC stood for
+   Media Access Control.  Message Authentication Codes are entirely
+   unrelated.
+
+----------------------------------------------------------------------
+The Abstraction
+----------------------------------------------------------------------
+
+So here's our abstraction so far:
+
+  Sender                    Receiver
+    m
+    |
+   c = encrypt(k, m)
+   h = MAC(k, m)
+
+    --- c | h -------->  m' = decrypt(k, c)
+                          check MAC(k, m') == h
+
+Suppose the adversary intercepts [c | h].  If he tampers with it,
+we'll know: the MAC won't check out on the receiver's side.
+
+  Aside: in this example, I concatenated the ciphertext with a MAC of
+  the original message.  I could've also done either of the following:
+
+  1. send c concatenated with the MAC of c, i.e. [ c | HMAC(c) ]
+  2. encrypt m concatenated with its MAC and send that, i.e., [
+     encrypt( k, m | MAC(k, m)) ]
+
+  All of these techniques provide the level of integrity that we want
+  in this discussion.  They have different security guarantees against
+  other types of attacks, but we're not concerned with that in this
+  class.  This StackExchange thread has a nice overview if you're
+  interested:
+
+  http://crypto.stackexchange.com/questions/202/should-we-mac-then-
+  encrypt-or-encrypt-then-mac
+
+Could the adversary do anything else with the message?
+
+Yes: the adversary could replay the message.  Imagine that m says
+"transfer $1000 to Katrina's bank account".  Adversary intercepts the
+encryption/MAC of that, and so might not know what it says, but he
+could re-send that message over and over to the receiver.  The
+receiver wouldn't detect anything because the MAC will check out.
+
+Solution: Include a sequence number in every message, and choose a new
+random sequence number for every connection.  So now:
+
+  Sender                    Receiver
+    m
+    |
+   c = encrypt(k, m | seq)
+   h = MAC(k, m | seq)
+
+    --- c | h -------->   m' | seq' = decrypt(k, c)
+                          check MAC(k, m' | seq') == h
+
+Now, if the adversary intercepts c | h, all it knows is the correct
+ciphertext/mac for a particular message combined with a particular
+sequence number.  The sender won't reuse that combination again (even
+if it sends the same m value, it will use a new sequence number), so
+we're good.
+
+OR ARE WE.  The receiver might also be sending its own messages.
+Since both sender and receiver are using the same key, the value that
+the adversary intercepted is a valid message in each direction.  So
+the adversary could send that value *back* to the sender at some
+point, masquerading as the receiver.  This is known as a reflection
+attack.
+
+  From last lecture: the interaction between the challenge-response
+  protocol and the "flipped" version was also a reflection attack.
+
+Solution is easy: Use different keys in each direction.
+
+  Aside: In protocols for secure channels, sequence numbers do not
+  wrap.  I.e., we don't have to worry about the sender re-using the
+  same sequence number at some far away point in the future.
+
+  If there is a conversation that is long enough that the sequence
+  number space is exhausted, a session is "renegotiated" between the
+  sender and the receiver.  (You could, for instance, imagine that
+  whenever a session is renegotiated, the sender and receiver both
+  change their keys.  In reality, they change a particular random
+  value known as the session ID).
+
+----------------------------------------------------------------------
+Key Exchange
+----------------------------------------------------------------------
+
+We haven't talked much about keys.  How do the sender and receiver get
+these keys in the first place?  Maybe they just send them at the
+beginning?
+
+No.  Terrible idea.  The adversary will just intercept the messages,
+and then have both keys.
+
+We're going to do key exchange with the power of math.  The sender and
+receiver -- call them Alice and Bob -- are trying to agree on a secret
+key.  (In our previous example they needed two secret keys: one per
+direction.  They can run the following protocol twice to do that.)
+They're going to start by picking a prime number p and a "generator"
+g.
+
+  Aside: For g to be a generator, it has to be a "primitive root"
+  modulo p.  In 6.033, don't worry about that; we'll tell you g and
+  p.  If you want to know more about primitive roots, take a
+  cryptography, number theory, or abstract algebra class.
+
+p and g don't need to be kept a secret; we'll assume the adversary
+knows them.
+
+Alice will pick a random number a, and Bob will pick a random number
+b.  Alice will send g^a mod p to Bob, and Bob will send g^b mod p to
+Alice.
+
+Alice will compute (g^b)^a mod p = g^ab mod p, and Bob will compute
+(g^a)^b mod p = g^ab mod p.  g^ab mod p is the secret key.  Notice
+that both Alice and Bob could compute it even though neither one knew
+both a and b.
+
+What about an adversary?  The adversary can learn p, g, g^a mod p, and
+g^b mod p.  They could calculate, for instance, g^a*g^b = g^(a+b) mod
+p.  But they won't be able to calculate g^ab mod p.
+
+  Aside: You have to trust me on that.  We won't prove it in this
+  class.
+
+This protocol is known as Diffie-Hellman key exchange.  And it works
+well, as long as the adversary only observes packets.
+
+----------------------------------------------------------------------
+Open vs. Closed Design
+----------------------------------------------------------------------
+
+There is one remaining problem with this protocol, but before we cover
+that, let's discuss: should the system designer keep the details of
+encrypt, decrypt, MAC a secret?
+
+- Pro: Harder for adversary to reverse-engineer the system
+- Con: Harder to recover once adversary learns algorithms
+- Con: Harder to get all the details correct by yourself
+
+In general: make the weakest practical assumptions about the
+adversary.  Assume they know the algorithms, but not the key.
+
+- Pro: Reuse well-tested, proven crypto algorithms
+- Pro: If key is disclosed, we can change it (unlike the algorithms)
+
+Using an "open" design makes security assumptions clearer.
+
+======================================================================
+Signatures
+======================================================================
+
+----------------------------------------------------------------------
+Attack on Diffie-Hellman
+----------------------------------------------------------------------
+
+Suppose the adversary sits in the middle of our network and intercepts
+messages in both directions.  Alice may think she has established a
+key with Bob (and vice versa), when really they've both established a
+key with the adversary.
+
+  Aside: The adversary need not literally intercept packets.  They
+  could subvert DNS instead.
+
+What went wrong?  There's no way for Alice to know who she's talking
+to.  We need to authenticate messages during key exchange.  In
+particular, given the name Bob we need to know if (g^b mod p) is
+really from Bob.
+
+----------------------------------------------------------------------
+Signatures
+----------------------------------------------------------------------
+
+We need a whole new primitive, and a whole new type of cryptography
+for this.  The primitive is signatures, and the type of crypto is
+public-key cryptography.
+
+  Aside: The type of cryptography we were using before is known as
+  symmetric key cryptography, where both parties share a single key.
+
+- User generates a key pair (PK, SK): one public key, and one private
+  (secret) key.  The public key can be given to anyone.  The private
+  key must be kept private.
+
+The public and secret keys are related mathematically (how they are
+related depends on the scheme you use).  With the secret key, we'll be
+able to perform a signing operation.  With the public key, we'll be
+able to verify the result of a signing operation, but *not* perform
+the signing.
+
+Two operations:
+- Sign(SK, m) -> sig.  Uses the secret key and the messages to
+  generate a signature sig.
+- Verify(PK, m, sig) -> yes/no.  Uses the public key to verify a
+  signature.
+
+These functions will have the property that it's difficult to compute
+sig without knowing SK.
+
+We will denote the pair {m, sig=Sign(SK, m)} as {m}_SK.  Given {m}_SK
+and corresponding PK, we know that m was signed by someone with SK.
+
+This process has a similar flavor to the MACs above.  There, the
+sender attached a MAC, and the receiver verified that the MAC was
+correct.  Here, a sender is attacking a signature, and the receiver
+will verify that the signature is correct.
+
+Signatures are "better" than MACs because they don't require parties
+to share a key; the receiver only needs to know the sender's public
+key.
+
+----------------------------------------------------------------------
+Key Distribution
+----------------------------------------------------------------------
+
+The only problem we have left is how to distribute the public keys.
+There are quite a few ways we might do this:
+
+1. Alice remembers the key she used to communicate with Bob the last
+   time.
+
+   - Pros: Easy to implement, effective against subsequent MITM
+     attacks.  SSH uses this approach.
+   - Cons: Doesn't protect against MITM attacks the first time around,
+     doesn't allow parties to change their keys later on.
+
+2. Consult some authority that knows everyone's public key (just keep
+   a table of name <-> public key mappings, clients consult the
+   authority every time they need a public key).
+
+   - Cons: Doesn't scale (client must ask the authority for a public
+     key for every new name.
+
+   - Also, Alice must know the server's public key beforehand
+     (otherwise we have a chicken-and-egg problem);
+
+3. Keep the authority idea, but pre-compute responses.  Now, the
+   authority creates signed messages: {Bob, PK_bob}_{SK_as}.  Anyone
+   can verify that the authority signed this message, given PK_as.
+   When Alice wants to talk to Bob, she needs a signed message from
+   the authority, but it doesn't matter where this message comes from
+   from as long as the signature checks out (i.e., Alice could
+   retrieve the message from a different server).
+
+   This signed message is a "certificate".  A certificate attests to a
+   binding between a name and a key.  The authority is a certificate
+   authority.  This solution is more scalable.
+
+Certificate authorities bring up all sorts of questions:
+
+1. Who should run the certificate authority?  Today, there are a large
+   number of certificate authorities.  If any of them sign a
+   certificate the browser will believe it.  Which is somewhat
+   problematic: Lots of CAs, controlled by many companies and
+   governments.  Game over if any are compromised or malicious.
+
+2. How does the browser get this list of CAs?  Generally they come
+   with the browser.
+
+     Aside: To download the list of CAs, we need to already know
+     someone's public key.  So there is still a bootstrapping problem.
+     Initially, the CAs are just installed by the  manufacturer.
+
+3. How does the CA build its table of names <-> public keys?
+
+   - First, we have to agree on how to name principals.  Everyone must
+     agree on what names will be used, and what names we use depends
+     on what's meaningful to the application.
+
+     For example, having certificates for an IP address wouldn't help
+     a web browser, because we want to know if we're talking to the
+     right server.  Since DNS is untrusted, we don't know what IP we
+     want.  Thus, for web server, certificate contains a server's host
+     name.
+
+   - How do we check if a key corresponds to name?  Whatever mechanism
+     CA decides is sufficient proof.  Some CAs send an email
+     root@domain asking if they approve cert for domain.  Some CAs
+     used to require faxed signed documents on company letterhead.
+
+4. What if a CA makes a mistake?  Whoever controls the corresponding
+   secret keys can now impersonate sites.  (Similarly problematic: an
+   attacker breaks into the CA server and steals the secret key)
+
+   We need a way to revoke certificates that should no longer be
+   accepted.  Note that this wasn't a problem when we queried the
+   server for every connection.
+
+   Technique 1: include an expiration time in certificate; clients
+   will not accept expired certificates.  This is useful in the long
+   term, but not so useful for immediate problems.
+
+   Technique 2: publish a certificate revocation list (CRL).  This can
+   work in theory; clients need to periodically download the CRL from
+   each CA.  In practice, CRLs are sometimes incorrect.
+
+   Also, fun fact, CRLs are rarely updated on the weekends:
+   http://ssl-research.ccs.neu.edu/papers/Heartbleed-IMC.pdf
+
+   Lesson: avoid rarely-used (untested) mechanisms.
+
+   Technique 3: query an online server to check certificate
+   freshness.  No need to download long CRL.  Checking status might be
+   less costly than obtaining certificate.
+
+There is a way to avoid certificate authorities all together: use
+public keys as name (protocols: SPKI/SDSI).  This trivially solves the
+problem of finding the public key for a name.  But it might not work
+for names that users enter directly.
+
+Works well for names that users don't have to remember/enter
+(application referring to a file, web page referring to a link).
+Additional attributes of a name can be verified by checking
+signatures.  E.g., suppose that each user in a system is named by a
+public key.  We can check a user's email address by verifying a
+message signed by that key.
+
+======================================================================
+TLS
+======================================================================
+
+Now that we know all of this theory, let's turn briefly to a protocol
+that actually does all of this: TLS (sometimes called SSL).
+
+The point of this endeavor is *not* to have you memorize all of the
+components of TLS.  It's to illuminate just how complex these types of
+protocols are.
+
+The part of TLS I'm going to talk about is how the connection is set
+up.  First, the client and server have to agree on some parameters.
+The client sends a message with a protocol version, a random sequence
+number, and some potential ciphers/compression schemes it can use.
+
+The server will reply with a protocol version, its own random sequence
+number, and a confirmation of which cipher/compression scheme it has
+chosen.  It will also give its certificate and a list of CA
+authorities.
+
+At this point, the client can verify the authenticity of the server.
+
+Next the client will send a secret value (the "pre_master_secret")
+encrypted with the server's public key.  Once the server has that,
+both the client and server can compute the master_secret using a
+pseudorandom function and the pre_master_secret and the two initial
+random values as input.
+
+They use the same function to compute a key_block which contains all
+sorts of keys.  Relevant to our purposes, it contains both the client
+and server MAC keys and encrypt() keys.
+
+Then the client and server send "finished" messages, which contain the
+hashes of some of the previous messages.
+
+If this were a cryptography class, we'd spend a lot of time talking
+about why each of these components is necessary.  Since it's not,
+we're going to sit back and appreciate just how complicated this
+scheme is.  The complexity comes from the fact that TLS has to support
+a lot of options and protocols.
+
+======================================================================
+Discussion
+======================================================================
+
+As I showed at the beginning of this lecture, not all traffic is
+encrypted by default (evidenced by me being able to sniff your
+traffic).  Why not?  We clearly have ways to do this.
+
+An end-to-end argument will tell you that the network itself should
+not encrypt by default; that decision should be left to the
+endpoints.  (Moreover, the Internet wasn't built with security in
+mind, so it wouldn't have provided encryption anyway.)
+
+So why doesn't all traffic run over a secure protocol such as TLS?
+- End-to-end encryption hasn't been a "thing" for most users until
+  recently.  Historically it's just been applied to transactions that
+  obviously needed to be secured, e.g., banking.
+- The protocols are complex to implement
+- Encryption can be expensive in terms of time
+
+But perhaps we are getting to a point in the world where the expense
+of encryption is worth it?

@@ -1,0 +1,399 @@
+
+<!-- saved from url=(0057)http://web.mit.edu/6.033/www/assignments/handson-tcp.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>6.033: Hands-on Assignment (TCP)</title>
+<style type="text/css"></style></head>
+
+<body bgcolor="White" text="Black">
+
+<a name="top">
+<h3>
+<em>
+<p align="center">
+M.I.T. DEPARTMENT OF EECS
+</p>
+</em>
+</h3>
+</a>
+<!-- RULE: h-header -->
+
+<table width="100%">
+<tbody><tr>
+<td align="left"><strong>6.033 - Computer System Engineering</strong>
+</td><td align="right"><strong>TCP Hands-On Assignment</strong>
+</td></tr></tbody></table>
+
+<hr>
+
+<h2>Hands-on 6: Understanding TCP using tcpdump</h2>
+
+
+
+<p>
+Complete the following hands-on assignment. As usual, submit your solutions using
+the <a href="https://6033.scripts.mit.edu:444/submit.cgi/">online submission site</a> by 11:59p.
+</p>
+
+<p>
+</p><p>
+We recommend, but do not require, that you perform this assignment on
+Athena. Please note that the TAs cannot guarantee tech support if you
+do not use an Athena workstation. Before you begin the assignment,
+please verify the following:<br>
+</p><ol>
+<li>
+<b> tcpdump is installed </b>: Most athena workstations (and linux
+machines, in general) should have tcpdump installed by default. If you
+get the error 'tcpdump: Command not found.', on an athena machine, run:
+<blockquote><code>
+ athena% <font color="green">add ops</font>
+</code></blockquote>
+
+If you are using other linux (Debian/Ubuntu-based) machines, run:
+<blockquote><code>sudo apt-get install tcpdump</code></blockquote> 
+to install it for the duration of a login session. 
+</li>
+<li>
+<b> <a id="x11">X11 forwarding (ssh -X) is enabled</a> </b>: This
+step is required only if you are accessing the athena machine (or any
+linux machine) over ssh. Please ensure that you enable X11 forwarding
+with "ssh -X". This is required for plotting the time sequence graph
+using xplot (section <a href="http://web.mit.edu/6.033/www/assignments/handson-tcp.html#sec1">1</a>). For example, to ssh into
+the athena dialup machine run:
+<blockquote><code>ssh -X athena.dialup.mit.edu</code></blockquote> X11
+forwarding is available on most linux machines and Mac OS X until
+Mountain Lion (<a href="http://support.apple.com/kb/HT5293">X11 on
+Mountain Lion</a>). X11 forwarding post-Mountain Lion can be done with
+<a href="http://xquartz.macosforge.org/landing/">XQuartz</a>.  We do
+not recommend or support X11 forwarding from Windows, but the
+following <a href="http://courses.cms.caltech.edu/cs11/misc/xwindows.html">link</a>
+may be useful.
+</li>
+</ol>
+
+<p>
+In this assignment you will understand how TCP works using tcpdump. To
+begin with, download the tcpdump log file
+from <a href="http://web.mit.edu/6.033/www/assignments/tcpdump.dat">here</a>. You
+can also download it on any linux machine using:
+</p>
+
+<blockquote><code>
+ athena% <font color="green">wget http://web.mit.edu/6.033/www/assignments/tcpdump.dat</font>
+</code></blockquote>
+
+
+<h3>
+<b>0. Understanding tcpdump</b>
+</h3>
+
+<p> For this assignment, we used a program that transmits a file from
+a machine called <i>willow</i> to a machine called <i>maple</i> over a
+TCP connection. We ran the <i>tcpdump</i> tool on the sender, willow,
+to log both the departing data packets and the received
+acknowledgments (ACKs).
+</p>
+
+<p>
+The file tcpdump.dat is a binary file which contains a log of all the
+TCP packets for the above TCP connection. The file is not
+human-readable. To parse the file, you can use tcpdump. For
+more information on tcpdump, you can look at:
+</p>  
+
+
+<blockquote><code>
+  athena% <font color="green">man tcpdump</font>
+</code></blockquote>
+
+<p>
+To understand the log file in a human-readable format, run:
+</p>
+
+<blockquote><code>   
+ athena% <font color="green">tcpdump -r tcpdump.dat &gt; outfile.txt </font>
+</code></blockquote>
+
+<p>
+Now open outfile.txt on your preferred text editor. The output has
+several lines listing packets sent from willow to maple, and the ACKs
+from maple to willow. For example:
+</p>
+
+<blockquote><code>   
+00:34:41.474225 IP willow.csail.mit.edu.39675 &gt; maple.csail.mit.edu.5001: Flags [.], seq 1473:2921, ack 1, win 115, options [nop,nop,TS val 282136474 ecr 282202089], length 1448
+</code></blockquote>
+
+<p>
+Denotes a packet sent from willow to maple. TCP uses <i>sequence
+numbers</i> to keep track of how much data it has sent. This packet
+has a sequence number 1473:2921, indicating that it contains all bytes
+from byte # 1473 to byte # 2920 (= 2921 - 1) in the stream, which is a
+total of 1448 bytes (note that 1448 = 2921 - 1473). The time stamp
+00:34:41.474225 denotes the time at which the packet was transmitted
+by willow.
+</p>
+
+<p>
+(<b>Note:</b> There may be very minor variations in the format of the
+output of tcpdump depending on the version of tcpdump on your machine.)
+</p>
+
+<p>
+Once maple receives the packet, assuming that it has received all
+previous packets as well, it sends an acknowledgment (ACK):
+</p>
+
+<blockquote><code>   
+00:34:41.482047 IP maple.csail.mit.edu.5001 &gt; willow.csail.mit.edu.39675: Flags [.], ack 2921, win 159, options [nop,nop,TS val 282202095 ecr 282136474], length 0
+</code></blockquote>
+
+<p> This indicates that maple has received all bytes from byte # 0 to
+byte # 2920. The next byte # that maple expects is byte # 2921. The
+time stamp 00:34:41.482047, denotes the time at which the ACK was
+received by willow.
+</p>
+
+
+<blockquote>
+<p><b>Question 1:</b> What are the IP addresses of maple and willow on
+this network? (Hint: Check the man page of tcpdump to discover how you
+can obtain the IP addresses)
+</p>
+</blockquote>
+
+<blockquote>
+<p><b>Question 2:</b> How many kilobytes were transferred during this
+TCP session, and how long did it last? Based on these, what is the
+throughput (in KiloBytes/sec) of this TCP flow between willow and maple?
+</p>
+</blockquote>
+
+<blockquote>
+<p><b>Question 3:</b> What is the round-trip time (RTT) in seconds,
+between willow and maple, based on packet 1473:2921 and its
+acknowledgment?  Look at outfile.txt and find the round-trip time of
+packet 13057:14505. Why are the two values different?
+</p>
+</blockquote>
+
+<h3>
+<b><a id="sec1">1. Time Sequence Graph</a></b>
+</h3>
+
+The time sequence graph plots the sequence numbers of packets and
+their acknowledgments over time. The xplot time sequence graph for
+the tcpdump data file (tsg.xpl) is available <a href="http://web.mit.edu/6.033/www/assignments/tsg.xpl">here</a>. You can
+also download it on any linux machine using:
+<p></p>
+
+<blockquote><code>
+ athena% <font color="green">wget http://web.mit.edu/6.033/www/assignments/tsg.xpl</font>
+</code></blockquote>
+
+<p>
+To plot a time sequence graph of the tcpdump data you need xplot. To
+make it available on Athena machines, run the following command:
+</p><p>
+</p><blockquote> <code>
+athena% <font color="green">add sipbnet</font>
+</code>
+</blockquote>
+
+<p>
+(<b>Note:</b> In case you prefer to use your own linux machine, xplot is
+available at for download at <a href="http://www.xplot.org/">www.xplot.org</a>.
+Please do <b>not</b> install the package "xplot" on Ubuntu machines. The
+correct version of xplot is in the Ubuntu repository as "xplot.org", and can be
+installed with "apt-get install xplot.org". To display the plot in this case,
+run "xplot.org tsg.xpl". Please note that the TAs cannot guarantee tech support
+if you do not use an Athena machine.)
+</p>
+
+<p>
+Now you should be able to obtain the plot using:
+</p>
+
+<p>
+</p><blockquote><code>
+athena% <font color="green">xplot tsg.xpl </font>
+</code></blockquote> 
+<p></p>
+
+<p>
+(<b>Note:</b> In case you get the following error message: "fatal
+error: could not open display", you have probably not enabled X11
+forwarding for ssh. Please check the <a href="http://web.mit.edu/6.033/www/assignments/handson-tcp.html#x11">X11 forwarding
+section</a> above)
+</p>
+
+<p>
+At this point, You should obtain a graph similar to the one in the
+figure below. Xplot allows you to zoom in / zoom out onto different
+portions of the figure:
+</p><ul>
+<li> <b>To zoom in:</b>  Drag a rectangle with the left mouse button. 
+</li><li> <b>To zoom out:</b> Click the left mouse button. 
+</li><li> <b>To scroll:</b>   Drag with the middle mouse button.
+</li></ul>
+<p></p>
+
+If you need additional information on xplot, visit
+the <a href="http://www.cs.unc.edu/~jeffay/dirt/FAQ/xplot.html">xplot
+FAQ page</a>.
+
+<div class="centerline" id="par3299" align="CENTER" style="padding:25px">
+<img width="" height="450" align="BOTTOM" border="0" src="./6.033_ Hands-on Assignment (TCP)_files/tsg1.png" alt="Image tsg1">
+</div>
+
+
+
+<p>
+The graph shows the number of bytes transmitted so far as a function
+of the time (in seconds). The time is taken from the tcpdump
+timestamp. The plotting program expresses the full time, in hh:mm:ss
+every second, and shows only the seconds in-between.
+</p>
+<p>
+The graph depicts different quantities:
+</p><ul>
+<li> <b> White arrows: </b> Each white arrow represents one sent
+packets. For example, the packet with sequence number 1473:2921 sent
+at 00:34:41.474225 is represented as a white arrow located at
+00:34:41.474225 on the x-axis, starting from 1473 and ending at 2921
+on the y-axis. </li>
+<li> <b> Green lines: </b> The green represents the acknowledgments
+(ACKs). Specifically, every transition refers to an arrival of an ACK
+at willow. For example, the ACK 2921 received by willow at time
+00:34:41.482047 is represented by a transition at 00:34:41.482047 on
+the x-axis and 2921 on the y-axis.
+</li><li> <b> Red arrows (marked with R): </b> Each red arrow represents a
+retransmitted packet.
+</li></ul>
+
+For additional information, a detailed manual on the various aspects
+of this plot is
+available <a href="http://www.tcptrace.org/tcptrace-manual/manual/index.html">here</a>.
+
+<blockquote>
+<p><b>Question 4:</b> You may notice that the white arrows occur
+always close to a "transition" in the green line. Do they occur to the
+left (i.e. before) or to the right of (i.e. after) these transitions?
+Why do you think this is the case?
+</p>
+</blockquote>
+
+<h3>
+<b>2. Packet Loss and Retransmission</b>
+</h3>
+<p>
+When a packet is lost, the transmitter does not receive an
+acknowledgment for it. You may recall that the lecture on TCP
+described two mechanisms by which a sender identifies a packet loss:
+three duplicate ACKs, or timeout. Answer the following questions on
+packet loss by zooming-in on the xplot graph. 
+
+</p><blockquote>
+<p><b>Question 5:</b> Find the <i>lowest</i> sequence number of a
+packet which was re-transmitted after 3 duplicate ACKs. You are
+permitted to round the sequence number to the nearest 1000 (e.g. you
+can say 13000:15000 instead of 13057:14505).
+</p>
+</blockquote>
+
+
+<blockquote>
+<p><b>Question 6:</b> Find the <i>lowest</i> sequence number of a
+packet which was re-transmitted after a time-out. You are permitted to
+round the sequence number to the nearest 1000.
+</p>
+</blockquote>
+
+
+<h3>
+<b>3. TCP Congestion Control</b>
+</h3>
+
+
+Zoom-out and look at the xplot graph for the whole transfer. You will
+notice that for most of the duration of the transfer (ignoring loss
+and initial behavior), the transmitted sequence numbers (i.e. the
+white arrows) appear to be on a line.
+
+<blockquote>
+<p><b>Question 7:</b> What aspect of TCP's behavior causes these white
+arrows to lie approximately on a line?
+</p>
+</blockquote>
+
+<blockquote>
+<p><b>Question 8:</b> Can you provide an equation that relates the
+slope of the above line to the average congestion window size (in
+Bytes) and the average round-trip time (RTT) of the TCP connection?
+</p>
+</blockquote>
+
+
+<h3>
+<b>4. Capacity and Congestion Control (Optional) </b>
+</h3>
+
+<p>
+A sender and receiver are connected by multiple links in the
+network. Each link may have a different capacity. The maximum capacity
+of the path between the sender and receiver is dictated by the link
+with least capacity (i.e. the bottleneck link).
+</p>
+
+<p> Packet pair is a technique for estimating the bottleneck capacity
+of a path. The packet-pair technique transmits two packets
+back-to-back from the transmitter to the receiver. These packets
+traverse a series of links connecting the source to destination. Note
+that for any such link with a link capacity is C Bytes/s, the span of
+a packet of length B bytes on the link equals B/C seconds. For
+example, in the figure below, t<sub>b</sub>, is the span of the packet
+on the bottleneck link. </p>
+
+<div class="centerline" id="par3299" align="CENTER" style="padding:25px">
+<img width="" height="250pt" align="BOTTOM" border="0" src="./6.033_ Hands-on Assignment (TCP)_files/packetpair.png" alt="Image packet-pair">
+</div>
+
+
+
+<p>
+Note that when you send two packets back-to-back, the inter-packet
+spacing will be defined by the bottleneck link, as shown in the
+figure.  Hence, measuring the inter-arrival time (i.e. the time
+between the beginning of the two packets) at the receiver, provides a
+good estimate of the capacity of the bottleneck link.  Note that
+though the bottleneck link will be followed by a link with higher
+capacity, this new link preserves the bottleneck spacing between the
+two packets. (Think why this is the case!)
+</p>
+
+
+<blockquote>
+<p><b>Question 9 (Optional):</b> For the path between willow and
+maple, the median inter-arrival time for a packet pair was estimated
+to be 0.0013 seconds. Each packet in the packet pair contained 1500
+Bytes. What is the bottleneck capacity of the path (in KiloBytes/sec)
+between willow and maple, based on this inter-arrival time?
+</p>
+</blockquote>
+
+<blockquote>
+<p><b>Question 10 (Optional):</b> Give a potential reason why the
+throughput of the TCP connection, estimated in Question 2, is
+different from the capacity of the bottleneck link.
+</p>
+</blockquote>
+
+
+
+<!-- RULE: h-footer -->
+<hr>
+
+
+<!--  LocalWords:  outfile
+ -->
+</body></html>

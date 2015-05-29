@@ -1,0 +1,233 @@
+          6.033 Spring 2015, Lecture 19
+                 Hari Balakrishnan
+                  April 15, 2015
+
+            DISTRIBUTED TRANSACTIONS
+
+Sometimes one wants to run transactions over data distributed on
+multiple different machines or even multiple different sites separated
+by a wide-area network. This lecture discusses how to coordinate a
+distributed transaction to ensure that either all the different
+machines (sites) run the steps to completion (COMMIT), or none do. The
+key idea we will study is a distributed commit protocol called
+TWO-PHASE COMMIT.
+
+1. EXAMPLES
+
+Example 1: A "sharded" database for scalability
+
+Suppose you're building a social networking feature into your
+application and want to maintain a set of friends for each user. Your
+app is wildly successful and now you need to scale the database that
+maintains information about users and their friends. Consider a simple
+table, called FriendsTable in your database:
+
+Username      Friend
+--------      ----------
+Alice         Charles
+Alice         Doug
+Alice         Eve
+Bob           Charles
+Charles       Alice
+Charles       Bob
+Charles       Doug
+Doug          Alice
+Doug          Charles
+Eve           Alice
+
+Let's say Alice adds Bob as a friend. Note that the "friend" relation
+is symmetric, so when Bob accepts Alice as a friend, we would like the
+database to have two new entries:
+
+Alice    Bob
+Bob      Alice
+
+Because your app has become very popular, a single database can no
+longer maintain information of all your users. You decide to "shard"
+the database, i.e., split it into multiple databases running on
+different machines. For example, one way to do this sharding is to run
+N different databases, partitioning them by Username. Let's say that
+in the sharded system, Alice and Bob are now on different machines,
+call them M1 and M2.
+
+What we want to do is to run the following queries within the same
+transaction (shown here with SQL):
+
+BEGIN_TRANSACTION
+        INSERT INTO M1.FriendsTable (Username, Friend) VALUES ('Alice', 'Bob') 
+        INSERT INTO M2.FriendsTable (Username, Friend) VALUES (Bob', Alice')
+END_TRANSACTION
+
+Each of these queries is a separate transaction, the first running on
+M1 and thessecond on M2. Each could independently fail or ABORT for a
+variety of reasons. An acceptable outcome is both queries succeeding
+or both queries failing. An unacceptable outcome is exactly one of the
+queries succeeding.
+
+That is, we want the M1 transaction to COMMIT if the M2 transaction
+COMMITs, and we want the M2 transaction to COMMIT if the M2
+transaction COMMITs. The outer transaction has a coordinator (e.g., a
+transaction management library used by the application).
+
+Example 2: Suppose we want to book a vacation itinerary involving two
+different airlines and a hotel. We want to run these three different
+transactions within a single larger transaction: they should all
+succeed or all fail; only one or two of them succeeding isn't an
+acceptable outcome.
+
+2. CHALLENGE: COMMIT PROTOCOL
+
+One can think of a distributed transaction as nested transactions that
+run on different machines or sites.
+
+We want the independent transactions, e.g., each of the two
+transactions to add a friend (Alice adding Bob and Bob adding Alice)
+to make their results visible to other transactions only when both
+have completed.
+
+Let's call te first query A and the second query B. Consider the
+following simple protocol:
+
+Coordinator (C)   M1                      M2
+
+C-->M1: do A               
+C-->M2: do B
+                  Run A        
+                  (but don't commit)
+                  M1-->C: ran A
+
+                                          Run B 
+                                          (but don't commit)
+                                          M2-->C: ran B
+
+C-->M1: COMMIT
+C-->M2: COMMIT
+     OR
+if either has failed
+(timed out) or ABORTed
+       
+C-->M1: ABORT
+C-->M2: ABORT
+
+                  COMMIT A
+                                        
+                                         COMMIT B
+
+Question: Is this protocol correct? Why not?
+
+Answer: Think about what happens under various failure situations...
+
+Suppose M2 fails. When it recovers, what does it need to do? It needs
+to ask the coordinator (C) what happened to the transaction. C needs
+to tell M2 the outcome. To do this, C needs to maintain a record of
+the outcome of every transaction (in durable storage, in case C
+crashes and then recovers).
+
+But in this protocol, how does M2 know how to ask C about a pending
+transaction?
+
+It needs something in durable storage! Like in its log. But it might
+not have written things to its log, because it did not yet receive a
+COMMIT (in a non-distributed transaction, the COMMIT forces log writes
+to disk and then a COMMIT record to disk).
+
+We need a better protocol to decide how and when to COMMIT.
+
+3. TWO-PHASE COMMIT
+
+Time flows downwards:
+
+Coordinator (C)   M1                      M2
+
+C-->M1: do A               
+C-->M2: do B
+                  Run A        
+                  (but don't commit)
+                  M1-->C: ran A
+
+                                          Run B 
+                                          (but don't commit)
+                                          M2-->C: ran B
+
+C-->M1: PREPARE to COMMIT!
+C-->M2: PREPARE to COMMIT!
+
+     OR
+
+if either has failed
+(timed out) or ABORTed       
+C-->M1: ABORT
+C-->M2: ABORT
+
+
+                  PREPARED!
+                  Log (PREPARED)        PREPARED!
+                  (or ABORT!)           Log(PREPARED)
+                                        (or, ABORT)
+
+if all PREPARED:
+   COMMIT! (this is the COMMIT point:
+            subordinates MUST commit now)
+else:
+   ABORT           log(COMMITTED)        
+                   (or log(ABORTED)     log(COMMITTED)
+                                        (or log(ABORTED)
+
+
+Correctness of two-phase commit:
+
+In the absence of any failures or message losses, the protocol is
+correct. Before the COMMIT point, results will not be visible, and at
+some time following the COMMIT point, results will be made visible to
+other transactions. The results on M1 and M2 cannot be guaranteed to
+be made visible at exactly the same instant of time (that is
+fundamentally impossible to achieve).
+
+Failure analysis is the more interesting case. We have to consider
+three cases:
+      1) Subordinate failure
+      2) Coordinator failure
+      3) Message losses
+
+1) Subordinate failure: If the failure occurs before the PREPARED has
+been logged, the subordinate simply undoes any changes it might have
+made when it recovers from its log (more generally, it wouldn't have
+written any data to disk, so there's nothing to do).
+
+If the failure occurs after PREPARED! has been written to the
+subordinate's log, when the subordinate recovers, it asks the
+coordinator what the fate of each PREPARED transaction was. If the
+coordinator says "COMMIT", the subordinate logs a COMMIT record and
+installs the changes to its cell store. If the coordinator says
+"ABORT", then the subordinate undoes any changes (if
+needed) and logs an ABORTED record.
+
+Once the subordinate has logged a PREPARED record, its fate wrt that
+transaction is solely in the coordinator's hands.
+
+2) Coordinator failure: If the coordinator fails, the system may,
+under some conditions, come to a halt. When the coordinator recovers,
+it knows about all COMMITTED transactions, and any other transaction
+that it might be asked about would be considered ABORTed.
+
+When the coordinator is down, the subordinates can determine from each
+other (assuming they know about each other) what happened to certain
+transactions. Any transaction without a PREPARED logged can be
+ABORTed. Any transaction with PREPARED in all the nodes has to wait
+until the coordinator recovers. Any transaction with COMMITTED or
+ABORTed in a subordinate's log may be handled accordingly by another
+subordinate.
+
+3) Handling a best-effort network with message losses: We use an
+exactly-once RPC protocol to handle message losses. Such an RPC has
+the property that each request is executed exactly once at M1 and M2,
+and the results provided to C. C would reissue requests if it does not
+get a response within a timeout period.
+
+An exactly-once message protocol uses nonces, which are unique
+identifiers guaranteed (with very high probability) to be used exactly
+once. (E.g., make up random 128-bit numbers.) The receiver maintains a
+list of observed nonces, and responds with the stored answer if the nonce
+(request) has already been seen. It does not re-execute a request for
+a stale nonce.
+

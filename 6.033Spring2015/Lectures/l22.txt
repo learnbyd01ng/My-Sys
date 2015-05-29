@@ -1,0 +1,581 @@
+6.033: Security - Principal Authentication
+Lecture 22
+Katrina LaCurts, lacurts@mit.edu
+
+**********************************************************************
+* Disclaimer: This is part of the security section in 6.033. Only    *
+* use the information you learn in this portion of the class to      *
+* secure your own systems, not to attack others.                     *
+**********************************************************************
+
+======================================================================
+Principal Authentication Overview
+======================================================================
+
+Between Monday's lecture and the past two recitations, you should now
+understand a few things about security:
+
+- Security is really hard.  It's impossible to be secure against an
+  arbitrary adversary, attackers find new attacks for many of our
+  security "solutions", getting the threat model wrong can lead to
+  incomplete mediation, etc.
+
+- Despite all of that, we have a few guiding principles to secure our
+  system: be explicit about your policy and threat model (and start
+  small: we can always evolve the threat model), use the guard model
+  to provide complete mediation to a resource, make as few components
+  trusted as possible ("principle of least privilege").  Systems that
+  use these principles avoid many common pitfalls, and are easier to
+  reason about when there *is* an attack.
+
+Recall the guard model from Monday's lecture.  Two common functions
+the guard provides are authentication of the principal and
+authorization (also remember: the guard doesn't *always* provide
+authentication; some systems let users be anonymous).
+
+Today we're going to talk about authentication, and we're going to
+focus for a long time on one of the most common ways to authentication
+users: username/password combinations.  Why this focus?  Aside from
+being super common, a lot can go wrong with passwords.  This lecture
+will illuminate some common mistakes.
+
+  NB: passwords are *not* the only method of authentication.  Hang on
+  until next week and I'll teach you some more.
+
+  Aside: We're strictly doing principal authentication here, i.e,
+  checking that the identify of the principal is correct.  Message
+  authentication is a related, but different, problem.
+
+======================================================================
+Authentication via passwords
+======================================================================
+
+What is our goal with authentication?
+
+- Verify that the user is who they say they are.  An attacker should
+  *not* be able to impersonate the user.  So whatever authentication
+  method we have should return TRUE when the correct user is using it,
+  and FALSE otherwise.
+
+Why use passwords as a method for authentication?
+
+- Bad thing: if adversary can guess password.  Random 8-letter
+  password means 26^8 possibilities.  Include
+  lowercase/caps/numbers/symbols, more like 60^8.  Allow n-letter
+  passwords, then 60^n.
+
+- Guessing is expensive.  Takes forever, and sometimes there are
+  limits (e.g., a system that locks a user out after 3 password
+  attempts)
+
+So it *seems like* passwords are a good way to authenticate a user;
+it's going to be hard for an adversary to guess the password.
+
+Let's see how we might implement them.  The example we'll use is
+login into an account on a shared computer system, but all of the
+information works for virtually any system that uses passwords.
+
+Today we're going to care, for the most part, about a threat model
+where the attacker has some sort of access to the server (i.e., we're
+going to care about how to store the passwords on the server).  We
+won't yet care about how to secure the communication channel between
+the client and the server; that's coming next week.
+
+----------------------------------------------------------------------
+Attempt 1: Store plaintext passwords on server
+----------------------------------------------------------------------
+
+First idea: server stores a table of usernames and passwords:
+
+  accounts_table:  username | password
+                     arya   | valarMorghul1s
+                      jon   | w1nterIsC0ming
+                     sansa  | LemonCakesForever
+                     hodor  | hodor
+
+A check password function might look like:
+
+  check_password(username, inputted_password)
+    stored_password = accounts_table[username]
+    if len(stored_password) != len(inputted_password)
+      return false
+    for i in range(len(stored_password)):
+      if stored_password[i] != inputted_password[i]:
+        return false
+    return true
+
+BAD IDEA.  This is insecure against some very common threat models:
+
+1. Adversary has access to the server (example: they are a sysadmin).
+   They can just read passwords straight from the accounts table.
+
+2. Adversary has access to the server, but not the table.  They could
+   exploit a buffer overflow like you saw yesterday in recitation and
+   get a copy of all the passwords.
+
+3. Or if the adversary can force a particular memory layout on the
+   server, they might be able to guess the password one character at a
+   time: if the password is allocated 1 byte away from the page
+   boundary, where the next page is not mapped, then a page fault
+   means that the first character is correct (if not, we would return
+   False and not get to the point of needing to load the next page).
+
+   Doing this repeatedly = guess the password.  This is an example of
+   cross-layer interaction.
+
+General lesson: Do not store sensitive data on a server in plaintext.
+Adversaries can get it.
+
+----------------------------------------------------------------------
+Attempt 2: Store hashes of passwords on server
+----------------------------------------------------------------------
+
+Need a way to avoid storing passwords in plaintext.  We'll store the
+hashes instead.  You've probably used hashes before, but perhaps not
+in the context of cryptography.
+
+  In general: A hash function H takes an input string of arbitrary
+  size and outputs a fixed-length string.  Common output sizes are 160
+  bits, 256 bits.
+
+  If two input strings, x and y, are different, the probability that
+  H(x) = H(y) should be virtually zero.  This means that hash
+  functions are collision resistant.
+
+  Cryptographic hash functions are also one-way: Given H(x), it's
+  (very) hard to recover x.
+
+  Hash functions evolve over time: SHA-0 and MD5 used to be popular,
+  now considered broken.
+
+Our accounts table and check_password function are now:
+
+  username | hash(password)
+    arya   | de5aba604c340e1965bb27d7a4c4ba03f4798ac7
+     jon   | 321196d4a6ff137202191489895e58c29475ccab
+    sansa  | 6ea7c2b3e08a3d19fee5766cf9fc51680b267e9f
+    hodor  | c6447b82fbb4b8e7dbcf2d28a4d7372f5dc32687
+
+  check_password(username, inputted_password)
+    stored_hash = accounts_table[username]
+    inputted_hash = SHA1_hash(inputted_password)
+    for i in range(len(stored_hash)):
+      if stored_hash[i] != inputted_hash[i]:
+        return false
+    return true
+
+This solves the page-fault attack, because just because two strings
+have the same prefix doesn't mean their hashes do
+
+  EX: SHA1 hash of "hello":aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d
+      of "helloworld": 6adfb183a4a2c94a2f92dab5ade762a47889a5a1
+
+  (You can do this yourself!
+   > echo -n hello | sha1sum
+   > echo -n helloworld | sha1sum)
+
+Seems like it solves the other attack: if an adversary breaks in, all
+they get is a list of hashes, not passwords.
+
+BUT: Suppose adversary breaks into a popular website, steals 1M
+hashes.  Couple this with the knowledge that people tend to be very
+bad at picking passwords.
+
+  Top passwords are usually things like "123456", "password",
+  "letmein", etc.
+
+Adversary can take these common passwords, determine the hashes
+(remember: given X, calculating H(x) is *really easy*.  It's going the
+other way that's difficult), build a table of these.  Called a
+"rainbow table".  Now, adversary can't get *every* password, but he
+can figure out the most common ones.
+
+General lesson: think about human factors when designing security
+systems.  Plenty of bad passwords have
+numbers/uppercase/lowercase/etc.  What matters is the (un)popularity
+of the password, not the letters/symbols.
+
+  6.033 PSA: There have been a lot of reports in the past few years of
+  hackers getting passwords in this way.  You might think that if an
+  attacker gets your, say, Gawker password, that's not as bad as them
+  getting your gmail password.
+
+  Take heart: If you reuse passwords across sites, you're only as safe
+  as the least-secure site in that set makes you.  Why?  Suppose you
+  use the same password for gawker and gmail.  If a hacker gets your
+  account information from gawker -- which probably contains your
+  email address -- they'll head right to gmail and try the same
+  password.  Even if your account info doesn't contain your email
+  address, it might be easy to guess (maybe it's your gawker username
+  @gmail.com).
+
+  The real significance of those attacks came from hackers using the
+  passwords at more "important" sites, e.g., gmail.
+
+  Pro tip: Don't reuse passwords.  A password manager such as
+  1Password can help you do this.
+
+----------------------------------------------------------------------
+Attempt 3: Salt the hashes
+----------------------------------------------------------------------
+
+We can still make it a bit harder to guess passwords by "salting" the
+hashes and making the same password have different hash values.  The
+salt is a random value we choose when first storing the password.
+We'll store the salt along with the hash of the password + salt.
+
+ username | salt       | hash(password + salt)
+   arya   | 5334900209 | c5d2a9ffd6052a27e6183d60321c44c58c3c26cc
+    jon   | 1128628774 | 624f0ffa577011e5704bdf0760435c6ca69336db
+   sansa  | 8188708254 | 5ee2b8effce270183ef0f4c7d458b1ed95c0cce5
+   hodor  | 6209415273 | f7e17e61376f16ca23560915b578d923d86e0319
+
+  check_password(username, inputted_password)
+    stored_hash = accounts_table[username]
+    inputted_hash = SHA1_hash(inputted_password + salt)
+    for i in range(len(stored_hash)):
+      if stored_hash[i] != inputted_hash[i]:
+        return false
+    return true
+
+Seems weird.  If attacker gets this table, they'll see the salt
+value.  But to build a rainbow table, they'd have to calculate the
+salt of every common password concatenated with every possible salt (I
+used 10-digit salts above).  It's impractical to build that table,
+which is why this method works (and why it's okay to store the salt in
+plaintext).
+
+  Aside: Typically, also want to use a much more expensive hash
+  function.  For reference: look up "bcrypt" by Provos and Mazieres.
+
+Re-cap so far: storing sensitive data -- e.g., passwords -- in
+plaintext is bad because an adversary could steal it.  Storing hashes
+is better, but human factors can still lead to attacks (e.g., common
+passwords let adversaries build rainbow tables).  Salt your passwords.
+
+======================================================================
+Practical Concern: Session Cookies
+======================================================================
+
+Next issue to deal with is a practical one.  We typically use
+passwords to bootstrap authentication; we don't continuously
+authenticate with our password for every command.
+
+Why?
+
+1. Security.  Typing, storing, transmitting, checking password is a
+   risk.  We want to do it infrequently.
+
+2. Convenience (sometimes).  No one wants to type their password for
+   every command (would probably lead to *very* easy-to-guess
+   passwords).  We could try to automate this process (e.g., store our
+   password, send it automatically with every command), but that means
+   we have to store our password somewhere, and you've seen where that
+   got us.
+
+In UNIX, the login process exchanges your password for a userid.  Web
+applications often exchange passwords for session cookies.  These are
+like temporary passwords that are good for a limited time.
+
+----------------------------------------------------------------------
+Session Cookies: Strawman Design
+----------------------------------------------------------------------
+
+The basic idea is this: a client sends their username and password to
+the server.  If it checks out, the server sends back a cookie:
+
+cookie = {username, expiration, H(serverkey | username | expiration)}
+
+  Aside: This is a sketch.  Look up HMAC if you really want to do
+  this.
+
+The client will use this tuple to authenticate itself for some period
+of time.
+
+- Why better than just automatically sending the password every time?
+  No need to store password in memory or re-enter it often.
+
+- Why include serverkey in the hash?  To ensure that users (or other
+  adversaries in the network) can't fabricate the hash themselves.  It
+  can be changed (thus invalidating the current cookies).
+
+- Can the user change the expiration to let their cookie be valid
+  forever?  No.  That would require changing the hash as well, and
+  they can't do that because serverkey is a secret.
+
+  Aside: One subtle thing if you're actually implementing cookies.
+  The same hash could be used for different username/expiration
+  pairs.  E.g.,
+    "Ben" and "22-May-2012".
+    "Ben2" and "2-May-2012".
+  The concatenated string used to compute the hash is same in both
+  cases, so an adversary could impersonate someone with a similar
+  username.
+
+  The solution is simple: use an invertible delimiter scheme for
+  hashing several things together.
+
+  The broader principle is important: be explicit and unambiguous when
+  it comes to security.
+
+======================================================================
+Practical Concern: Phishing
+======================================================================
+
+Another practical issue: phishing.  This is when an adversary tricks a
+user into visiting a legitimate-looking website and asks for
+username/password.  The site is actually owned by the adversary (e.g.,
+bank0famerica.com not bankofamerica.com), and now they have our
+password.
+
+What to do?  Once you send a password to the server, it can
+impersonate you.  Hashing the password database doesn't help: we're
+still sending the password to the server to verify on login.
+
+Note also that this has nothing to do with whether the network is
+secure (something we'll talk about in the next lecture).  The problem
+is that I've given this password to an adversary's site.  Whether a
+person snooping on the network also got it is orthogonal.
+
+----------------------------------------------------------------------
+Solutions for Phishing Attacks
+----------------------------------------------------------------------
+
+There are a lot of techniques for dealing with this.  Many of them
+reveal more general lessons.
+
+1. Challenge-response protocol.
+
+   Assume (for now) that the server is storing passwords in
+   plaintext.  A typical exchange between client and server:
+
+   c -- password --> s
+
+   S now has the password p, which is what we're trying to avoid.  We
+   can get s to use a challenge-response protocol instead:
+
+   - Instead of asking for the password, the server chooses a random
+     value r, sends it to the client.
+   - The client computes H(r + password), sends that back to the
+     server
+   - The server checks whether this matches its computation of the
+     hash with the expected password
+
+   c <------- r ------ s
+     ---- H(r + p) -->    <- s checks
+
+   If the server didn't already know the password, it still doesn't.
+
+   But!  This relied on the server storing p in plaintext, so that it
+   too could compute H(r+p).
+
+   If the server is storing (salted) hashes, we could have the client
+   compute H(r + H(p)) (or H(r + H(s + p)) and send that.  *But*, this
+   means that the hash of the password is now, effectively, the
+   password.  So by storing hashes of passwords, the server is storing
+   passwords.
+
+   There's a protocol to deal with this, though: SRP.  It's too
+   complicated for this class, but look it up if you're building a
+   real system.  All you need to know is that the server can store
+   hashes of passwords and still perform a challenge-response
+   protocol.
+
+General lesson: Make the server prove that it knows a secret (the
+password) without revealing that secret.  Hash functions are a good
+way to do this.
+
+2. Flip the challenge-response protocol.
+
+   We can flip the protocol around to put the onus on the server to
+   prove itself.  The client is effectively demanding proof of the
+   server's identity, not the other way around.
+
+   - Client chooses Q, sends to server
+   - server computes H(Q + password) and replies
+
+   Only the authentic server would know your password!
+
+   Unfortunately, not many systems use this in practice, in part
+   because app developers just care about app authenticating the user.
+
+   Complication: could be used with first scheme above to fool the
+   server.  Suppose I'm an adversary that wants to be able to login to
+   the server.  S sends me a challenge r, but I don't know the
+   password, so I can't compute H(r+p).
+
+   Instead, I'll challenge S with the *same* r, and replay its
+   response.  E.g.:
+
+
+   Evil client        S
+      < ------ r -----
+
+      -------- r ----->    <- evil client issues its *own* challenge
+      <---- H(r+p) ---     <- server responds to challenge
+
+      ----- H(r+p) --->    <- evil client responds to original
+                              challenge
+
+General lesson: Be explicit.  E.g., hash the intended recipient
+of response (e.g., client or server), and have the recipient verify
+it.
+
+Also, think about how interactions between
+layers/protocols/etc. affect security.
+
+3. Turn phishing attacks from offline into online attacks.
+
+   Sitekey works by having a user select an image/phrase pairing that
+   they should see whenever they login to their account.  If adversary
+   doesn't have the right image/phrase pairing, users will know the
+   site is fake.
+
+   Aside: I believe the original sitekey just used an image.  But most
+   sites employ this image/word or image/phrase pairing.
+
+   The adversary could talk to real site, fetch image for each user
+   that logs in, maybe even get the words.. so why is this useful?
+
+   That attack requires much more effort on the adversary's part, and
+   is easier to detect (bank could, e.g., watch for many requests
+   coming from a single computer).
+
+General lesson: Don't need perfect security, small improvements can
+help.  Making an attack harder to mount is good because it discourages
+attackers from carrying out the attack, and because the attack will
+often be easier to detect.
+
+4. Make passwords specific to a site
+
+   Instead of sending password, send H(servername + password).  Just
+   like a basic password scheme, from the server's point of view,
+   except impersonator on another server gets a different password.  
+
+5. One-time passwords
+
+   If an adversary *does* intercept your password, they can keep using
+   it over and over.  What if you use a different password every time?
+   These are known as one-time passwords (passwords you use only one
+   time).  Obviously it's impractical to make a user choose a new
+   password every time, so:
+
+   Design: Construct a long chain of hashes.
+   - Start with password and salt, as before.
+   - Repeatedly apply hash, n times, to get n passwords.
+   - Server stores x = H(H(H(H(...(H(salt+password))))))
+                     = H^n(salt+password)
+   To authenticate:
+   - client sends token=H^{n-1}(salt+password).
+   - server verifies that x = H(token)
+   - server sets x <- token (i.e., x <= H^{n-1})
+  
+   The user carries a printout of a few hashes, or uses smartphone to
+   compute them.
+
+General lesson: If your password, or other information, contains a part
+that changes over time, it's harder for an adversary to intercept (if
+they intercept it once, the password will only be correct for a short
+amount of time).
+
+6. Two-step Verification (an alternative to one-time passwords)
+
+   Similar to how one-time passwords are set up, but include a time in
+   the hash.
+
+   - Server and user's smartphone share some secret string K
+   - To authenticate, smartphone computers H(K || current time)
+   - User sends hash value to server, server can check a few recent
+     times
+
+7. Bind authentication and request authorization.
+  
+   Sending a password authorizes any request.  Even requests by
+   adversary that intercepts our password.
+  
+   A different design: use password to authenticate any request.
+    req = {username, "write X to grades.txt", H(pwd + "write..") }
+
+   The server can check if this is a legitimate request from a user
+   using the password.  If an adversary intercepts the request, they
+   don't get the password.
+
+   They *do* get the ability to replay the request later, so in
+   practice we don't use a password; we use some session token that
+   expires instead.
+
+   This technique could combine well with one-time passwords.
+
+General lesson: Make the client prove themself on any request by binding
+authentication and authorization.
+
+Theme: With better techniques comes more complexity and more
+inconvenience.
+
+======================================================================
+Practical Concern: Bootstrapping
+======================================================================
+
+Now, after all that, how do we initially set a password for an
+account?  If an adversary can subvert this process, there's virtually
+nothing we can do.
+
+MIT: admissions office vets each student, hands out account codes.
+Many web sites: anyone with an email can create a new account.
+
+How do we change our password, e.g., after compromise?  Need some
+additional mechanism to differentiate user vs. attacker.
+
+MIT: walk over to accounts office, show ID, admin can reset password.
+Many web sites: additional "security" questions used to reset
+  password.
+
+Why does this matter?  Password bootstrap / reset mechanisms are part
+of the security system.  These mechanisms can sometimes be weaker than
+the password mechanisms.  A strong password won't help you at all if
+an attacker can easily reset it to whatever they want.
+
+Anecdote: Sarah Palin's Yahoo account was compromised by an attacker
+guessing her security questions.  Personal information can be easy to
+find online.
+
+General lesson: Don't forget the bootstrapping/resetting parts of a
+system when designing it.
+
+======================================================================
+Summary
+======================================================================
+
+Regarding passwords:
+- Storage: use salted hashes
+- Session cookies make repeated authentication more secure (and more
+  convenient)
+- Phishing is a problem, but we have techniques for it.  Better
+  techniques = more complexity, more inconvenience
+- Bootstrapping passwords (setting them up) is just as important as
+  the security of the password once it exists
+
+Better solutions typically mean more complexity and less convenience.
+Is it worth it?  How do we decide?
+
+More general lessons:
+- Do not store sensitive data on a server in plaintext.
+- Think about human factors when designing security systems.
+- Hash functions are a good way to make servers (or other entities)
+  prove that they know a secret without revealing that secret.
+- Be explicit
+- Don't need perfect security, small improvements can help.
+- If your password, or other information, contains a part that changes
+  over time, it's harder for an adversary to intercept
+- Bind authentication and authorization when appropriate
+- Don't forget the bootstrapping/resetting parts of a system when
+  designing it.
+
+Tomorrow's recitation:  Security problems in ATMs.  ATMs use PINs,
+which are a lot like passwords.  Should reiterate
+- Systems are complex
+- Incorrect threat models are bad
+- Humans make mistakes.
+
+Next lecture: Secure channels.  How do we deal with an adversary
+sniffing the network.

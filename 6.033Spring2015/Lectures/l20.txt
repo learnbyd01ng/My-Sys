@@ -1,0 +1,297 @@
+          6.033 Spring 2015, Lecture 20
+                 Hari Balakrishnan
+                  April 22, 2015
+
+          AVAILABILITY VIA REPLICATION
+
+A key theme in our treatment of fault-tolerant computing is to achieve
+fault-tolerance from unreliable components. In the past four lectures,
+we studied the transactional model, which provides all-or-nothing
+atomicity and durability via write-ahead logging, and also supports
+concurrent operations using serializable semantics
+("before-or-after"). The transactional model is a powerful,
+widely-used way to improve the reliability of many systems. It
+ensures, in particular, that software and hardware crashes preserve
+the effects of all committed transactions and undo any changes made by
+aborted transactions.
+
+Transactions by themselves don't improve availability (recall that
+availability is defined as the fraction of time that a system is
+working). If a transaction system crashes, it can recover to a
+reliable state, but when it is recovering, the system is not
+available.
+
+One way to improve availability is via replication. That's what we
+will study here. Our plan is as follows:
+
+1) Some examples (illustrating the trade-off between availability and
+consistency).
+2) Optimistic and pessimistic replication.
+3) Optimistic replication: key challenge (concurrent updates)
+4) Vector timestamps: one approach to optimistic replication
+5) Pessimistic replication with a replicated state machine (overview only)
+(#5 was not covered in lecture and will not be on Quiz 2)
+
+1. EXAMPLES
+
+We have already seen two examples of replication in the course so far:
+DNS and RAID, and last week we studied PNUTS in recitation. Even
+between DNS and RAID, the contrast between their consistency semantics
+is instructive:
+
+DNS: Multiple name servers and extensive caching using "time to live"
+to determine when the cached data is invalid. Tolerates various server
+failures and various network partitions.
+
+The data in the caches could be inconsistent, but the system has high
+availability compared to a system where clients would always have to
+contact a primary or backup name server.
+
+RAID: When writing data, a quorum of disks must be available and data
+is always consistent (i.e., read returns result of most recent
+write). But if more than a certain number of disks fail or not all
+disks are reachable, system stalls. I.e., we prefer high consistency
+to high availability.
+
+PNUTS: Uses "eventual consistency" as its model rather than ensuring
+that all reads show the result of some serializable
+execution. Replicas "eventually" obtain the right data.
+
+Where one sits on the availability-consistency trade-off depends on
+the application and goals of the system one is designing. 
+
+Consider for example the following two sets of uses:
+
+Set 1:
+------
+DNS
+Mobile calendar
+Version control for source/docs
+File sharing across devices ("Dropbox", "Drive", etc.)
+File sync'ing between devices ("Unison")
+
+Set 2:
+------
+RAID
+Replicated transaction database for a bank
+Distributed lock manager
+Distributed transaction coordinator (for two-phase commit)
+
+For the first set, the designer is likely to prefer availability over
+consistency. (I'll define what "consistency" means a little later, but
+for now, assume it means "a read gets the result of the last
+write"). It is alright for the data to become "eventually consistent"
+(or even, as in DNS, give up on consistency and live with
+inconsistency because it allows us to tolerate network partitions and
+scale to a large size).
+
+For the second set, we would like something a lot better because the
+damage caused by inconsistent states could be immense. One way to
+state a goal is "single-copy consistency", i.e., we would like the
+replicated system to behave as if there was a single machine and
+single copy of all data, except that we would like much higher
+availability than a single system can provide. For example, it would
+be a disaster to have a distributed lock manager give a lock on some
+object to two different clients at the same time, or rely on some
+"eventually correct" value in our bank account!
+
+The techniques used for the first and second set are rather
+different. To achieve high availability, the first set of applications
+are willing to tolerate some inconsistency, as long as it may
+eventually get resolved, and more importantly, as long as conflicting
+updates are detected and handled. The second set of applications is
+better served by stalling or blocking if it means that single-copy
+semantics might be violated.
+
+The challenge in achieving our goals come from: (1) concurrent
+operations, (2) replica failures, and (3) network partitions.
+
+
+2. OPTIMISTIC AND PESSIMISTIC REPLICATION
+
+Optimistic replication techniques generally favor availability over
+single-copy consistency. They let data be read or written without a
+priori coordination, by assuming that conflicts are rare. They
+propagagte updates in the background, they have a way to detect
+conflicts, and a way to fix conflicts after they happen. (Often fixing
+a conflict involves propagating the issue to a higher layer or to the
+user; for example, "you have two different meetings at 10 am").
+
+Pessimistic replication techniques ensure single-copy consistency by
+synchronously coordinating replicas, and blocking other operations
+during an update. 
+
+3. OPTIMISTIC REPLICATION
+
+Consider a simple example of file synchronization between devices. We
+look at one file.
+
+Example 1. Consider the following (time flows from left to right, and
+H1, H2, etc. are machines):
+
+H1: W("A"); Send to H2
+H2:                     R(file); W("B")
+H2:                                    Send file to H1
+H1:                                                    Read(file)
+
+Here both H1 and H2 have consistent data.
+
+Example 2. Now consider:
+
+H1: W("A"); Send to H2;            Send to H3
+H2:                       Read(file); W("B")
+H3:                                              Read(file); Send to H2
+
+What should H2 do now? It has two versions of the file; should it
+retain its own version, or should it use the version that came to it
+from H3 *after* H2 had saved its local changes?
+
+A solution that works in this situation is to track the modification
+time of the file and use the version with the latest modification
+time. This solution assumes that the clocks are synchronized across
+the different machines. Protocols like the Network Time Protocol (NTP)
+work reasonably well in practice, and could be used for this purpose.
+
+The problem, however, is that this solution is not general
+enough. Consider the following:
+
+Example 3.
+
+H1: W("A"); Send to H2;          W("C") at time 5
+H2:                      Read(file); W("B) at time 6; Send to H1
+
+Here, both H1 and H2 have made changes, and H2's modification time is
+larger. So which version should we use? 
+
+The answer is not obvious. H2 made the change *without* knowing about
+H1's subsequent change, starting with the version written at the start
+by H1. H1's subsequent change also used the same initial version. Had
+H2 made its change *after* becoming aware of H1's change, then its
+changed version ("B") would be appropriate. But as it stands, the
+changes made by H1 and H2 are in conflict with each other.
+
+We would like a way of automatically detecting such conflicts. 
+
+When a conflict arises, the higher layer application or user must
+handle it. For example, a calendar application detecting a conflict
+could apply application-specific methods to merge entries or resolve
+conflicts, or ask the user what to do. And when there is no conflict,
+the replication protocol automatically "does the right thing".
+
+There are many ways to define a conflict. One approach is to use the
+following principle: If updates are made sequentially (i.e., update Y
+was made at a machine after it received update X), then we want to
+ensure that the most recent update on that update chain is the correct
+one. If not, the protocol must detect the conflict automatically. 
+
+4. VECTOR TIMESTAMPS
+
+A method to achieve these consistency semantics is to use VECTOR
+TIMESTAMPS. The idea is to extend the "modification time" to be a
+vector, with one timestamp per machine. 
+
+Vector Timestamp (VT): <T_1, T_2, ..., T_N>, where T_i is the
+timestamp at which machine i modified the object. The protocol assumes
+that the timestamp assignment on each machine is monotonically
+increasing; i.e., time must always move forward from update to
+update. The timestamps may be assigned via a real monotonic clock, or
+could be logical.
+
+If a = <a_1, a_2, ... a_n> and b = <b_1, b_2, ..., b_n> are two vector
+timestamps, then we define:
+
+            a = b if for all i, a_i = b_i
+            a > b if for all i, a_i >= b_i AND !(a = b)
+            a || b if there exists i, j: a_i > b_i AND a_j < b_j.
+
+a > b means a is MORE RECENT than b.
+a || b means a and b are concurrent, and neither is more recent than
+the other.
+
+The protocol: 
+
+0, Initially, each file's vector timestamp is <0, 0, ..., 0>. 
+
+1. If a machine i modifies the file, the vector timestamp changes the
+i'th index to the modification time.
+
+2. When a machine i sends a file to machine j, the vector timestamp at
+machine j for the file is set to the more recent of the local
+timestamp or the version that just arrived from machine i, unless the
+two timestamps are concurrent.
+
+3. If the timestamps are concurrent, flag a conflict.
+
+Thus: when a machine has multiple versions of a file, its conflict
+resolution process is to use the version with the most-recent version
+timestamp. If it is unable to determine whether one timestamp is more
+recent than the other, it flags a conflict. 
+
+This protocol ensures the conflict detection principle described
+above: If updates are made sequentially (i.e., update Y was made at a
+machine after it received update X), then we want to ensure that the
+most recent update on that update chain is the correct one. If not,
+the protocol must detect the conflict automatically.
+
+Notice that with vector timestamps we only need each machine's
+timestamps to be monotonically increasing; we don't need the clocks on
+the machines to be synchronized.
+
+5. PESSIMISTIC REPLICATION
+(Note: we did not cover this in lecture, and it will not be on Quiz 2.)
+
+Examples where pessimistic replication ensuring single-copy
+consistency is useful include replication transaction systems where we
+would like all the replicas to run the steps in exactly the same
+order, a distributed lock manager, a distributed transaction
+coordinator to orchestrate a two-phase commit protocol, etc.
+
+If multiple replicas run the same operations in the same order and all
+operations are deterministic, then all replicas will have the same
+state. This idea is called a replicated state machine. On a failure, a
+VIEW SERVER can select a suitable backup replica to become the
+primary, and clients can use the new primary.
+
+There are a few tricky parts to get right:
+
+-- Ensuring deterministic operations; e.g., what happens when the
+   computation involves random number generation, local time, etc.?
+
+-- What happens when there is a network partition and clients and
+   servers have conflicting opinions on whether the primary is running
+   or not?
+
+-- How to ensure that the view server is not a central point of
+   failure?
+
+To ensure deterministic operations, we could always use the primary's
+results and send those to the secondary on operations that
+conflict. If the primary is a transaction processing system, we could
+ship its write-ahead log to the replicas, and return from a COMMIT
+only when the replicas have written the log data to their own disks. 
+
+The use of a single view server means that its opinions are the right
+one. Clients and servers both contact the view server periodically to
+determine the identity of the primary and backups.
+
+The view server will need to itself be replicated for
+fault-tolerance, which is starting to appear like a chicken-and-egg
+problem! The difference, however, is that in the simplest of
+situations, the machines in the system only need to achieve consensus
+on one thing: the identity of the primary replica. (In practice, one
+needs consensus on a sequence of operations made, making the protocol
+a lot more complicated.) 
+
+Various consensus protocols have been developed by researchers, such
+as Viewstamped Replication, Paxos, and RAFT, and have inspired schemes
+used in practice. A course on distributed systems such as 6.824 will
+teach you the principles and practice of these techniques...
+
+
+We're now at the end of our module on fault-tolerance, where we
+studied:
+
+-- the meaning of reliability and avaialibility
+-- transactions, and how to implement them
+-- replication
+

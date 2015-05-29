@@ -1,0 +1,117 @@
+
+<!-- saved from url=(0059)http://web.mit.edu/6.033/www/assignments/handson-trust.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>6.033: Hands-on Assignment: Trust &amp; Web Certificates</title>
+<style type="text/css"></style></head>
+
+<body>
+<a name="top">
+<h4 align="center"><em>M.I.T. DEPARTMENT OF EECS</em></h4>
+</a>
+<!-- RULE: h-header -->
+
+<table width="100%">
+<tbody>
+    <tr>
+        <td align="left"><strong>6.033 - Computer System Engineering</strong></td>
+        <td align="right"><strong>Trust &amp; Web Certificates Assignment</strong></td>
+    </tr>
+</tbody>
+</table>
+
+<hr>
+
+<h2>Hands-on 11: Trust &amp; Web Certificates</h2>
+
+<p>
+Complete the following hands-on assignment.  Do the activities
+described, and submit your solutions using the <a href="https://6033.scripts.mit.edu:444/submit.cgi/">online submission site</a>
+by 11:59p.</p>
+
+<p>This assignment explores the meaning of "trust" when using
+computers, and in particular in using SSL/TLS certificates (HTTPS or
+other uses). You will be taking a simple Python "shell" and inserting
+a backdoor (somewhat similar to the backdoor described
+in <a href="http://web.mit.edu/6.033/www/assignments/rec-trust.shtml">the next paper</a>), and answering some
+questions about web certificates.</p>
+
+<p>This assignment must be completed on a Unix based OS running Python. Athena is a suitable environment.</p>
+
+<p>This assignment involves programming.</p>
+
+<h3>I. Warmup</h3>
+
+<p>Download and save <a href="http://web.mit.edu/6.033/www/assignments/trust/shell.py">shell.py</a>, which contains our sample shell.
+You might run the following command to do this:
+
+</p><pre>  $ wget http://web.mit.edu/6.033/www/assignments/trust/shell.py
+</pre>
+
+<p>Read through the code briefly to get a sense of how it works before continuing.</p>
+
+<p>Ensure that you are in the directory you downloaded <kbd>shell.py</kbd> into, mark it executable with <kbd>chmod +x shell.py</kbd>, and then run it with <kbd>./shell.py</kbd>. Once in the shell, you can use the <kbd>help</kbd> command to see what commands are available.</p>
+
+<p><strong>Exercise 1:</strong> What should you type (within the shell) to see the source of "shell.py"?
+
+</p><p>Our shell supports downloading new code from the Internet, which will be relevant to the backdoor that you'll write later and the web certificates questions. We've written a slightly different version of the shell that colorizes the prompt and does a couple of other things.</p>
+
+<p><strong>Exercise 2:</strong> Use the shell's built-in <kbd>update</kbd> command to download <kbd>http://web.mit.edu/6.033/www/assignments/trust/shell.color.py</kbd>. Note that you have a chance to read the new code before it is installed. Once you have the new code, run <kbd>reexec</kbd> to start the new shell. You should see a colored prompt. What else has changed?</p>
+
+<p>Note that <kbd>shell.py</kbd> has now been overwritten with the colored version. You will need to redownload the original <kbd>shell.py</kbd> later.</p>
+
+<p><strong>Exercise 3:</strong> The shell also supports "logging in". Try using the <kbd>login</kbd> and <kbd>logout</kbd> commands to log in and out. Another command shows the authentication status — which command is it?</p>
+
+<h3>II. Protecting against getting bad code</h3>
+
+<p>You need to trust a wide variety of parties when downloading software from the internet. One way to reduce that risk is to download your software over TLS, which removes the need to trust your wifi connection or routers between you and the server. TLS encrypts and signs all data transferred over your connection. It protects against man-in-the-middle attacks by verifying who you are talking to by checking for a certificate signed by a recognized <em>certificate authority</em>.</p>
+
+<p><strong>Exercise 4:</strong> Even downloads over HTTPS/TLS require trusting a variety of organizations. Name at least three different parties that needed to be trusted for an TLS connection to be secure. (This should be roles, like "the operators of all the routers between me and the server", rather than specific companies.)</p>
+
+<p><strong>Exercise 5:</strong> Even if the parties in Exercise 4 are well-meaning, they can still make mistakes that compromise the security of the TLS connection. List at least three mistakes they could make.</p>
+
+<p><strong>Exercise 6:</strong> Look at a couple certificate authorities (providers of TLS certificates), such as <a href="http://www.startssl.com/">StartSSL</a> (which issues certificates for free), <a href="http://www.verisign.com/">VeriSign/Symantec</a>, or <a href="http://www.geotrust.com/">GeoTrust</a>. How do they verify that you control the domain name you're getting a certificate for?</p>
+
+<p><strong>Exercise 7:</strong> Another common weakness is incorrectly using certificate libraries. While the <kbd>update</kbd> command can be used with an <kbd>https://</kbd> URL, it has a critical issue in which using it over an insecure connection could leave you with a compromised shell. Why? (You can find the answer in the Python documentation. Alternatively, <a href="http://www.cs.utexas.edu/~shmat/shmat_ccs12.pdf">"The Most Dangerous Code in the World: Validating SSL Certificates in Non-Browser Software"</a> is an interesting (and an entirely optional) paper that you could read (or skim) to find out.)</p>
+
+<h3>III. Writing a backdoor</h3>
+
+<p>If untrusted code gets installed (by downloading software from an untrusted source or over an untrusted wi-fi connection, for example), it can be very difficult to detect or remove it. Next, you will add a backdoor to the shell you worked with earlier. Like the backdoor in <a href="http://web.mit.edu/6.033/www/assignments/rec-trust.shtml"><cite>Reflections on Trusting Trust</cite></a>, this backdoor will have both a payload and a mechanism to compromise new versions of the code. In <cite>Trusting Trust</cite> this latter mechanism is in the compiler, while your backdoor will compromise the update mechanism.</p>
+
+<p><strong>Exercise 8:</strong> Modify the original shell (not the colored version) to add an undetectable "backdoor" that saves usernames to a file on disk. Include your code in your submission for this assignment. How long did it take you to complete this assignment?</p>
+
+<p>Some requirements for your backdoor:</p>
+<ul>
+    <li><kbd>login</kbd> should append the provided username to <kbd>usernames.txt</kbd></li>
+    <li>Running the "update" command should successfully install new versions of the shell. However, the new version should be modified to also incorporate your backdoor. In particular, you should be able to:<ol>
+        <li>Run a backdoored version of the original <kbd>shell.py</kbd></li>
+        <li>Use the <kbd>login</kbd> command and have your backdoor record the username</li>
+        <li>Use the <kbd>update</kbd> command to download and install the color version of the shell</li>
+        <li>Run <kbd>reexec</kbd> to get a colored prompt</li>
+        <li>Use the <kbd>login</kbd> command, and <em>still</em> have your backdoor record the username</li>
+    </ol>
+    Naturally, some updates will not be compatible with your backdoor, but you should be able to make a backdoor that can be easily combined with the colored shell as well as a variety of other variants on the initial shell.</li>
+    <li><kbd>cat</kbd> should not reveal the presence of your backgroud<ul>
+        <li>Running <kbd>cat shell.py</kbd> should display the original shell source (or any updates that were applied), and not display any of your backdoor code</li>
+        <li>Running <kbd>cat usernames.txt</kbd> (or any other file you created for the backdoor) should give the usual <samp>Failed to open usernames.txt</samp> error message</li>
+        <li>Running <kbd>cat</kbd> with any file not involved in your backdoor should display the contents of the file, as before</li>
+        </ul></li>
+    <li>The code displayed by the <kbd>update</kbd> command should match the contents of the URL specified</li>
+    <li>After the backdoor has been applied, quitting the shell and re-running it (or <kbd>reexec</kbd>ing it) should leave the backdoor in place</li>
+    <li>Normal Unix tools (<kbd>cat</kbd>, <kbd>ls</kbd>, <kbd>vim</kbd>, etc.) <em>may</em> reveal the presense of the backdoor — only somebody operating exclusively within our custom shell needs to be unable to detect the backdoor</li>
+</ul>
+
+<p>You can implement your backdoor however you wish. One possible approach takes advantage of the fact that, in Python, later function declarations replace earlier ones. You can create a separate file containing alternate definitions of some functions and include it using Python's <code>execfile</code> function. You should only need to redefine the <code>read_file</code>, <code>write_code</code>, and <code>login</code> functions. You will probably need to write 15–50 lines of code for this section.</p>
+
+
+
+<!-- RULE: h-footer -->
+<hr>
+
+<table width="100%">
+<tbody><tr>
+<td align="left"><b>Go to <a href="http://web.mit.edu/6.033/www/index.shtml">6.033 Home Page</a></b>
+</td></tr></tbody></table>
+
+
+
+</body></html>

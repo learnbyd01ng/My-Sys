@@ -1,0 +1,519 @@
+6.033: Networking - In-network Resource Management
+Lecture 12
+Katrina LaCurts, lacurts@mit.edu
+
+======================================================================
+Last lecture + Queues
+======================================================================
+
+Last time: Hari talked to you about TCP congestion control.  Briefly,
+a TCP source increases its window size incrementally until it
+experiences a packet drop, in which case it cuts the window size by
+half.
+
+TCP CC is a cross-layer problem: the transport layer -- where TCP
+"lives" -- is using network-layer -- where the queues live -- feedback
+to adapt.  What is that feedback?  Packet drops.
+
+Before I start criticizing this mechanism, let me be clear: congestion
+control is absolutely necessary on the Internet.  Without it, we
+experience congestion collapse.  We need some mechanism to get
+endpoints to send at the "correct" rate.
+
+There are a lot of small details you can pick at regarding TCP CC.
+E.g., there are a lot of parameter values that could be adjusted.  But
+let me talk about one, more broad thing, which isn't a criticism of
+TCP CC so much as it is a criticism of queues: TCP CC reacts to packet
+drops, and packets aren't dropped until queues are full.  Do we *want*
+full queues?
+
+No!  Full queues = large delay.  You'll talk about this a lot in
+recitation tomorrow.  We're allowing queues to get full before senders
+react, though.
+
+So why have queues at all?  After all, if we get rid of them, we'll
+never experience large delay due to full queues..
+
+Well, we need queues.  We need them to absorb bursts.  Moreover,
+without them, we'd have to get our congestion window *just right*.
+Without queues, if it is even the slightest bit too large, packets
+will get dropped and utilization will decrease.
+
+What we want is transient queues: Queues that absorb bursts when tcp >
+capacity, but drain when tcp < capacity.  What we *don't* want are
+persistent queues: queues that never drain.
+
+So what could we do?  One idea is to have TCP CC react to a different
+signal.  What changes when queues start to increase?  Delay.  Even
+before queues are full, delay increases.
+
+So one idea: TCP senders back off (maybe by 50%, maybe by less) when
+they observe an increase in delay.  They back off earlier than before,
+so we don't let queues get full.
+
+This is a fine idea, but *really* tricky to get correct: our delay
+estimation has to be *really* good.  And additionally, we probably
+don't *want* to react to transient queues, so we'd have to somehow
+rule those out.
+
+======================================================================
+Queue management/in-network resource management
+======================================================================
+
+For now, we're going to keep CC as it is: senders back off when they
+observe drops.  But could we be smarter about when we drop packets?
+i.e., what if the queue dropped packets before it was full?
+
+"when to drop" is (partially) the problem of queue management.  You
+are already familiar with one queue management scheme: DropTail.
+
+----------------------------------------------------------------------
+DropTail
+----------------------------------------------------------------------
+
+DropTail is super obvious.  When a packet arrives, if the queue is
+full, drop it; if it's not full, queue it.
+
+Pros:
+- Simple
+- Only drop packets when we need to (remember: dropped packets =
+  retransmission, and we'd like to avoid those) [Sort of a pro; see
+  below]
+
+Cons:
+- We said earlier that we might want to drop before the queue is full,
+  and DropTail doesn't do that. [Sort of a con; see above]
+- Synchronizes sources
+
+Synchronization: Consider the following scenario, where one source
+sends a burst of traffic: x x x x [ |x|x|x|x]
+
+The queue will drop three packets at the tail of the queue in a
+burst.  Because of the semantics of TCP, the source will have to wait
+for a timeout, and the flow will be "throttled" (throughput decreased
+way down).
+
+What about if there were multiple sources, all with the bursty type of
+traffic?
+
+1) All sources burst
+2) Packets dropped from all
+3) All sources throttle back, reducing utilization
+4) Sources increase, cycle repeats
+
+So these flows get synchronized.  Flow synchronization = decreased
+network utilization.
+
+Other bad things about DT:
+- Fairness.  You could be the "unlucky" guy
+- Tend to have mostly-full queues, because we drop only when we run
+  out of buffer. Big queues = big delays.
+- Bad for bursty traffic.  Since queues are often full, it's unlikely
+  that we can handle a burst.
+
+----------------------------------------------------------------------
+RED
+----------------------------------------------------------------------
+
+RED is a reaction to all of these limitations.  Idea: Drop *before*
+the queue is full to give flows an early signal.  If we do this well,
+we don't have to be so aggressive with drops.  Basically, RED spreads
+the drops out, whereas DropTail does them all at once.
+
+RED is an example of "active queue management."
+
+Idea: drop packet when queue length exceeds a certain threshold with
+some probability.  There are two thresholds (in addition to some other
+parameters): min_q, max_q:
+  <= min_q: do nothing
+  > min_q, <= max_q: drop packet with increasing probability
+  > max_q: drop packet with probability 1
+
+The probability of a drop increases linearly with the average queue
+size between min_q and max_q.
+
+In order to do this, we need a measure of the average queue size.  As
+always, with averages, there are a few different ways to do this.  RED
+uses a low-pass filter over the instantaneous queue size:
+
+  q_avg = w*q_instant + (1-w)*q_avg   (0 < w << 1)
+
+RED results in a few things:
+
+1. Queue length doesn't oscillate as much
+
+   Because q_avg is a low-pass filter on q_instant, we get smoother
+   queue sizes.  It damps down highs.
+
+2. There is a smooth change in the drop rate with congestion.  I.e.,
+   congestion increases slightly, drop probability increases slightly.
+
+   This you can see in the figure I just drew.  As q_avg increases,
+   so does the drop probability, to keep q_avg stable.
+
+3. Flows get desynchronized
+
+   Because we drop with a probability, we spread the drops, and
+   desynchronize the flows.
+
+These are all Good Things.  We'll talk about the Bad Things in a
+second, except for one: why drop packets at all?  Dropped packets
+still means a source has to retransmit.
+
+----------------------------------------------------------------------
+ECN
+----------------------------------------------------------------------
+
+We tried to solve that problem before and use delays as a congestion
+signal.  But now, we're inside the queue; we could do something
+cooler.
+
+We can "mark" packets.  A packet is marked if a particular bit in the
+header is set.  Now, we could take RED, but instead of dropping with
+some probability, we mark packets with some probability.  The source
+learns about congestion through a marked ACK.
+
+Note, though, that the source need to *do something* here.  If our
+source ignores the marking, everything is the same (vs. RED, where we
+know sources will react to a drop).
+
+----------------------------------------------------------------------
+RED/ECN vs. DropTail
+----------------------------------------------------------------------
+
+RED/ECN advantages over DT:
+- RED gives a signal when there is low congestion which leads to the
+  two following:
+  - Smaller persistent queues => smaller delays
+  - Less dramatic oscillation
+- Less biased against bursty traffic (in theory)
+
+Disadvantages:
+- More complex
+- Hard to pick parameters (min_q, max_q, etc.)
+  - Depend on the number of flows in the network, the bottleneck,
+    etc.  If not chosen well, the oscillation can be even worse.
+
+Also: If we only have a few TCPs, we don't see smooth feedback.
+Remember, we wanted to smoothly adjust the total amount of bandwidth
+we're using in the network, rather than having synchronized flows that
+all drop off at the same time.  RED/ECN only give a smooth change in
+the total rate if there are a large number of TCPs.
+
+Neither RED nor ECN are the final word on active queue management.
+There are other schemes (CoDel..).  Moreover, even though RED/ECN
+haven't seen widespread use on the Internet, the ideas are still good,
+and can be used in specific types of networks.  You'll see this
+Thursday in recitation.
+
+======================================================================
+Traffic Differentiation + Delay-based Scheduling
+======================================================================
+
+In-network resource management is not limited to queue management.
+Another aspect of it is traffic differentiation.
+
+----------------------------------------------------------------------
+Delay-based scheduling
+----------------------------------------------------------------------
+
+- Suppose you want to give latency guarantees for a particular type of
+  traffic.  Example: prioritizing Skype over Dropbox file sync, or
+  prioritizing your XBox live over email.
+
+- One FIFO queue won't work.  If an email with a large attachment is
+  ahead of XBox live traffic in the queue, forget it.
+
+- What if we had two queues: XBox queue and email queue
+  - serve xbox queue if it has a packet
+  - if not, serve email queue
+
+This is known as priority queueing.  The key idea here is to isolate
+types of traffic by having multiple queues (we can have more than just
+xbox + email).  So for each packet, we do the following:
+
+  Packets --> classify --> enqueue --> schedule
+
+This gives us isolation by having multiple queues.
+
+In priority queueing, our scheduler was simple: do the xbox queue if
+it has a packet, if not, do the email queue.  Note that scheduling is
+different than queue management.  Queue management was the problem of
+dropping/marking packets in a single queue.  Scheduling is the problem
+of, given multiple queues, how do we decide which one to send a packet
+from.
+
+But we can see there is a problem: if we have a ton of xbox live
+traffic, it's going to starve out the email traffic.  We'll come back
+to this problem.
+
+  Aside: If you're thinking that latency-sensitive applications tend
+  to not send much traffic compared to throughput-sensitive
+  applications, that is indeed true.  But imagine 2000 xbox live
+  connections and 1 email connection; in aggregate, we'll probably
+  have a lot more xbox traffic.
+
+======================================================================
+Bandwidth-based scheduling
+======================================================================
+
+Modulo that problem, we dealt with delay-based scheduling.  What if we
+wanted bandwidth-scheduling, where we allocate a certain amount of
+bandwidth to each queue?
+
+  Note that TCP CC is meant to give an equal share of bandwidth among
+  all flows that are backlogged.  It provides no mechanism for giving,
+  say, 30% of bandwidth to one flow, 70% to another.
+
+----------------------------------------------------------------------
+Round-robin
+----------------------------------------------------------------------
+
+Let's start with an easy case: we'd like both xbox and email to get
+the same amount of bandwidth: 50% each.
+
+xbox:  [ 10 | 10 | 10 ]
+email: [ 10 | 10 | 10 ]
+
+No problem: we'll use a round-robin scheduler, where we visit the xbox
+queue, then the email queue, then the xbox queue, etc.:
+
+   xbox | email | xbox | email | xbox | email
+
+This scheduler gives us no way to weight traffic differently, e.g., to
+allow xbox traffic to get twice as much bandwidth.  But that's easy
+enough: we'll just add weights, and visit each queue a number of times
+in proportion to its weight:
+
+xbox:  [ 10 | 10 | 10 | 10 ] weight = 2
+email: [ 10 | 10 | 10 | 10 ] weight = 1
+
+Now:  xbox | xbox | email | xbox | xbox | email
+
+etc.
+
+But suppose that you start sending a large attachment, and your packet
+sizes grow:
+
+xbox:  [ 10  | 10  | 10  | 10 ]     weight = 2
+email: [ 100 | 100 | 100 | 100 ] weight = 1
+
+Now, even with weights, we'll send 200 bytes of email traffic in the
+same amount of time that we send 40 bytes of xbox traffic.  This isn't
+fair at all!  So variable packet sizes screw up round robin.
+
+We can try a scheme called weighted round robin to fix this.  I'm
+going to show you the algorithm first before I explain why it's
+better:
+
+  xbox.weight = 2/3      email.weight = 1/3   <-- normalize weights
+  xbox.mean = 10         email.mean = 100     <-- mean packet size
+  xbox.norm = 2/3/10     email.norm = 1/3/100
+            = 1/15                  = 1/300
+
+              min norm = 1/300
+
+  xbox.packets = 1/15/(1/300)  email.packets = 1/300/(1/300)
+               = 20                          = 1
+
+So send 20 xbox packets for every 1 email packet.  Does that work?  20
+* 10 bytes = 200 bytes, 1 * 100 bytes = 100 bytes.  So yes, xbox gets
+2x the bandwidth of email.
+
+Why?  Basically, because we took the weights and factored packet size
+in.
+
+This seems like it's going really well.  But now imagine that the
+packets within a queue are variably sized:
+
+xbox:  [ 5 | 5 | 10 | 10 ]     weight = 2
+email: [ 1 | 1 | 1 | 1 ] weight = 1
+
+   xbox.weight = 2/3    email.weight = 1/3
+   xbox.mean = 7.5      email.mean = 1
+   xbox.norm = 4/45     email.norm = 1/3
+
+                min norm = 4/45
+
+   xbox.packets = 1     email.packets = 3-4
+
+For every 3-4 bytes of email, we'll send 5-10 bytes of xbox.
+
+Additionally: how should we be calculating this mean packet size?
+Over all packets ever?  Over the last n?  It's a problem.  We'd like
+to get away from mean packet size.
+
+----------------------------------------------------------------------
+Deficit round-robin
+----------------------------------------------------------------------
+
+This brings us to deficit round-robin.  Again, I'll show you the
+algorithm and then explain it.
+
+xbox:  10 | 10 | 5 | 5 | 10 | 10    xbox.Q = 20
+email: 10 | 10 | 10 | 10 | 10 | 10  email.Q = 10
+
+The Q's here are working how the weights did before.  I'll explain
+why they're 20 and 10, not 2/3 and 1/3, in a second
+
+xbox.credit = 0
+email.credit = 0
+
+round 1:
+xbox.credit += xbox.Q = 20
+  while xbox.credit > next packet size:
+    send next packet
+    decrement packet size from credit
+  so we'll send 2 xbox packets, and xbox.credit = 0
+
+  xbox queue is now: 10 | 10 | 5 | 5
+
+email.credit += email.Q = 10
+  we'll send just the first packet, and email.credit = 0
+
+  email queue is now 10 | 10 | 10 | 10 | 10
+
+round 2: keep going
+
+   xbox.credit += 20 = 20
+   have enough credit to send the next four packets
+   xbox.credit = 0
+   xbox.queue = [ ]
+
+   email.credit += 10
+   have enough credit to send next packet
+   email.credit = 0
+   email.queue = [ 10 | 10 | 10 | 10 ]
+
+So we sent 20 bytes for every 10 bytes of email, even with variable
+packet sizes within the queue.
+
+The Q's here were larger because they reflected a packet size.  If we
+had used xbox.Q = 2, email.Q = 1, we would've had to go through a lot
+of rounds before we could've sent a single packet.  So: smaller
+quantum size means a lot of wasted rounds before we can send; larger
+quantum size means potentially sending a lot of packets from one queue
+before we move on to the next.
+
+Let's look at another example:
+
+xbox = [ 20 | 750 | 200 ]   xbox.Q = 500
+email = [ 500 | 500 ]       email.Q = 500
+
+round 1:
+
+  xbox.credit = 500
+  can send first packet; xbox.credit = 300
+  cannot send next packet
+
+  email.credit = 500
+  can send first packet; email.credit = 0
+
+round 2:
+
+  xbox.credit = 300 + 500 = 800
+  can send first packet; xbox.credit = 50
+  can send second packet; xbox.credit = 30
+
+  email.credit = 500
+  can send first packet; email.credit = 0
+
+So you see, credit carries over.  This helps us deal with variable
+packet sizes.
+
+This scheme is nice for a few reasons
+- don't need mean packet size, as illustrated
+- it gives near-perfect throughput fairness (we won't prove this)
+- it's efficient: O(1) packet processing
+  - other schemes that have better fairness have more expensive
+    processing demands.  The ideal algorithm (called bit-by-bit
+	round-robin, not covered here), which has perfect fairness, has
+	O(log n) processing
+
+======================================================================
+Putting it all together
+======================================================================
+
+If we wanted to combine these notions of fair queueing and priority
+queueing, we might do something like this:
+
+
+   latency-sensitive traffic -
+                                | PQ | ---
+app 1 -
+app 2 -  | FQ | --------------
+..    
+app n -
+
+So do some flavor of (weighted) fair queueing among the
+non-prioritized apps, and then priority queueing among that queue and
+the latency-sensitive traffic.
+
+To deal with starvation -- the problem we left unsolved originally --
+there is often some traffic shaping to rate-limit the prioritized
+traffic.
+
+----------------------------------------------------------------------
+Traffic differentiation: yea or nay?
+----------------------------------------------------------------------
+
+Now, traffic differentiation: is it a good idea?
+
+In theory, sure; it sounds like a great idea.  It lets us give
+priority service to latency-sensitive apps, we can do (roughly) fair
+queueing among the other apps, as well as across the prioritized
+traffic and the other traffic (so latency-sensitive traffic doesn’t
+starve out other flows)
+
+But:
+ - it’s hard to decide what granularity of isolation makes sense.
+   Per-app?  Per-flow?  Per-destination?  Per-source?
+   - per-app would likely mean deep packet inspection, which is
+     expensive, and what do you do about encrypted traffic?
+   - it's hard to store per-flow state.  In practice, we use a fixed
+     number of queues
+
+For (weighted) fair queueing:
+ - most schemes other than deficit round-robin are expensive
+ - have to change routers to do this, which everyone hates
+ - how do you choose which traffic gets priority?
+
+For priority queueing:
+ - It's unclear how multiple (potentially different) QoS boxes might
+   interact, as they aren't necessarily using the same algorithm.
+ - There's some interesting adversary stuff - it's often easy to avoid
+   QoS (VPNs, encrypt traffic, change ports).
+
+There’s also the recent Net Neutrality stuff esp. Comcast/Netflix.
+*Should* we allow traffic to be prioritized?
+
+Fun fact: Until recently, this sort of differentiation was explicitly
+allowed for mobile networks.  We saw lots of stuff like YouTube videos
+being auto-de-scaled (even on-the-fly!), images resampled, etc.  So a
+lot of what's deployed is more "application level" QoS that arguably
+is for network management purposes.
+
+Depressing conclusion: there is actually enough bandwidth in the
+internet that a single FIFO queue works fine (evidence: voip basically
+works).
+
+======================================================================
+Summary
+======================================================================
+
+- TCP CC reacts to drops, lets queues get full
+  - Use (active) queue management schemes instead:
+    - RED drops before queues are full
+    - ECN is RED, but mark instead of drop
+    - Hard to set parameters for these things
+
+- queue management is an example of in-network resource management.
+  Another type is traffic differentiation
+  - Priority queueing to let latency-sensitive traffic through faster
+  - Various types of scheduling to allow different types of traffic to
+    get different fractions of bandwidth
+    - Weighted round robin: variable packet sizes are bad
+    - Deficit round robin: handle variable packet sizes
+      - Doesn't give perfect fairness, but is near-perfect and
+        processing overhead is low
+  - Traffic differentiation: not clear if it's a good idea

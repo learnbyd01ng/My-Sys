@@ -1,0 +1,554 @@
+6.033 - Operating Systems + Virtual Memory
+Lecture 4
+Katrina LaCurts, lacurts@mit.edu
+(many ideas taken from Sam Madden's Spring 2014 notes)
+
+======================================================================
+Previous Lecture
+======================================================================
+
+What you've seen in this class so far is the following:
+
+- Modular designs are good because they reduce complexity.  A
+  client/server model is one way to enforce modularity.
+- Naming, which lets modules communicate, is pervasive in all of
+  systems.  Naming schemes have a lot in common, despite showing up in
+  different contexts and with lots of different details.  Modularity
+  is impossible without an ability to name.
+
+Now we're going to move away from these networked systems for a bit
+and concentrate on the following problem: how can we enforce
+modularity on a single machine?
+
+Why would we even do this?  Having modularity on a single machine
+makes it easier to run applications on hardware.  Imagine the
+client/server alternative, where we have to run every application on a
+separate physical machine.  Reading email, browsing the Internet,
+listening to music, and typing up homework would then take at least
+four physical machines.
+
+======================================================================
+Operating Systems
+======================================================================
+
+The system that enforces modularity on a single machine is an
+operating system (OS).  Over the next few lectures, we'll talk about
+how operating systems do this, and you will also see topics such as
+virtual memory, file systems, processes, kernels, locks, etc.
+
+----------------------------------------------------------------------
+Goals of an OS
+----------------------------------------------------------------------
+
+Before talking about exactly how operating systems enforce modularity,
+let's talk about them in general.  What do they do?  How do they make
+our lives easier?
+
+The way operating systems make our lives easier is by providing the
+following:
+- Multiplexing: the ability to run many programs
+- Isolation: the enforcement of modularity between programs (a buggy
+  or malicious program shouldn't crash others)
+- Cooperation: the ability for programs to interact and share data
+
+Those three properties allow one machine to do what multiple machines
+in the client/server model did.  OSes also provide two additional
+things:
+
+- Portability: the ability for the same program to run on different
+  hardware
+- Performance: the ability for programs to not just run, but run well
+  (i.e., fast)
+
+In this lecture, we'll focus on the first two.
+
+======================================================================
+Demo
+======================================================================
+
+Now, back to enforcing modularity on a single machine.  What does
+enforcing modularity even mean in this sense?  What are the modules?
+What could happen in modularity wasn't enforced?
+
+Consider the function call fork().  fork() forks a child process, so
+after a call to fork, we have a parent process and a child process.
+
+If things are going well, and modularity is enforced, the parent
+process should not be able to corrupt the child process' memory.  (So
+in this example, processes are the modules)
+
+Let's take a look at wilddemo.c.  wilddemo.c forks a parent and child
+process, which both use a variable m.  m points to a function f, which
+simply prints "child is running" and the memory address of m.  All the
+child process does is call the function that m points to (f) every
+second for 15 seconds.
+
+What the parent does is more insidious.  It overwrites m (m = 0) in an
+attempt to crash the child process.  The parent also executes m.
+
+If the parent is successful, what will happen?  since m points to
+somewhere else,
+a) when the parent calls (*m)(), something different should happen
+b) when the *child* calls (*m)(), something different should happen
+
+  Aside: "something different" might be a crash, or a different
+  function executing, depending on how the parent sets m.
+
+This result is undesirable: it means that one module can force an
+error in another.  So what happens?
+
+But look: this doesn't work!  The parent itself crashes, in its
+invocation of (*m)(), so indeed "something different" happened there.
+But the child lives on, and with the original value of m!
+
+So despite having two programs on one computer, they are isolated:
+they could crash themselves, but not each other.
+
+======================================================================
+Virtual Memory
+======================================================================
+
+----------------------------------------------------------------------
+Virtualization
+----------------------------------------------------------------------
+
+So as you've seen above, part of enforcing modularity on a single
+machine will involve protecting one program's memory from another.
+That is not all we'll need.  The operating system also needs to do two
+additional things:
+- Allow programs to communicate
+- Allow programs to share a single CPU such that one process cannot
+  halt the progress of all others
+
+The technique that an operating system uses to achieve these goals is
+virtualization.
+
+Virtualization is a technique by which the operating system interposes
+between a program and the physical hardware.  The operating system
+will simulate the interface of the physical hardware to a program,
+
+To enforce modularity on a single machine, and solve the problems
+above (protecting memory, allowing communication, and sharing a CPU)
+we need to virtualize three different things:
+
+- Memory (this lecture)
+- Communication links (next lecture)
+- Processes (lecture after that)
+
+In this lecture, we're going to solve the first one; we'll virtualize
+memory.  To do this, we'll adopt the following two assumptions
+regarding the other two issues:
+1. One CPU per program
+2. Programs don't need to communicate
+
+Implicitly, we're making a third assumption
+3. The OS is correctly programmed, i.e., we do not need to worry about
+   faults in the OS
+
+Over the course of the next four lectures, we'll remove all of these
+assumptions.
+
+----------------------------------------------------------------------
+Single program to multiple programs
+----------------------------------------------------------------------
+
+[ Students: see the slides for better diagrams of everything in this
+  section ]
+
+To understand how an operating system virtualizes memory, you first
+need to understand how memory works without virtualization.  Let's
+look at how a single program works.  We have two components: the main
+memory, which holds instructions and data, and the CPU, which
+interprets instructions.
+
+  CPU                      Main memory (DRAM)
+ -------------------        --------------
+|for (;;) {         |      | instructions |
+|  next instruction | <--> | data         |
+| }                 |      |              |
+ -------------------        --------------
+
+The CPU is loading and running instructions, and loading and storing
+other memory locations (based on instructions).  The way the CPU does
+this is with an instruction pointer.
+
+  Aside: In this class, we'll illustrate all examples using a 32-bit
+  x86 instruction pointer, which is known as "EIP" (extended
+  instruction pointer)
+
+The EIP is incremented after each instruction to proceed to the next
+instruction.  It can be modified to point to a different instruction
+via CALL, RET, JMP, or conditional JMP statements.
+
+Of course, our goal here was to allow multiple modules on the same
+machine.  So what if we use this design for multiple programs?
+(Remember: we're assuming one CPU per program)
+
+  CPU1                     Main memory (DRAM)
+ -------------------        --------------
+|for (;;) {         |      | instructions for cpu1 |
+|  next instruction | <--> | data for cpu1         |
+| }                 |      |                       |
+ -------------------       |                       |
+                           |                       |
+  CPU2                     |                       |
+ -------------------       |                       |
+|for (;;) {         |      | instructions for cpu2 |
+|  next instruction | <--> | data for cpu2         |
+| }                 |      |                       |
+ -------------------        -----------------------
+
+This is problematic: programs could modify other program's data, jump
+into its code, etc.  There is nothing enforcing the modularity between
+the two programs (CPUs) here.
+
+----------------------------------------------------------------------
+An alternative design
+----------------------------------------------------------------------
+
+One way we could do this is to divide memory into chunks, or domains,
+and force each program to only use the addresses in its domain.  This
+enforcement would be done with some special piece of hardware that
+prevented programs from accessing memory outside of their domains.
+
+  Aside: Section 5.3 of your book describes this approach
+
+However, there are a few undesirable properties of this approach:
+
+1. Programs have to be written to avoid certain addresses.  For
+   example, if a program has access to addresses 0x00010000 through
+   0x00020000, it can't be written to reference address 0x00000000.
+
+2. We've assumed that our physical memory is large enough to hold all
+   domains, and that the domain size remains fixed.  That's
+   unreasonable.  We could add the ability to grow a domain, but this
+   might involve moving other domains around, which is complicated and
+   slow.
+
+Both of these problems stem from the fact that this technique doesn't
+*virtualize* memory.  If we've properly virtualized memory, then each
+program should be able to use the full 32-bit address space, just like
+it would if it had direct access to memory.  Then we don't have to
+worry about growing domains, or avoiding certain addresses.
+
+----------------------------------------------------------------------
+Virtual memory addressing
+----------------------------------------------------------------------
+
+So how will we do this?  We're claiming that each program will be able
+to reference any 32-bit address, when clearly that is going to result
+in address space collisions (and thus corruption, etc.).
+
+We'll do this by adding a level of indirection with naming!  Programs
+are going to reference *virtual* addresses, which will be translated
+into actual physical addresses: the virtual addresses are the names,
+the physical addresses the values.  We'll prevent a program from
+accessing certain physical addresses by removing its ability to name
+them; that's the "hiding" component of naming.  Moreover, the
+indirection provided by names will give us more flexibility with how a
+program's instructions/data are physically laid out in memory.
+
+To do the translation, we use a special piece of hardware: the memory
+management unit (MMU).  The MMU sits between the CPUs and the main
+memory.
+
+The MMU will use a table -- which, in the typical implementation,
+resides in main memory -- to translate virtual addresses to physical
+addresses (one table per program).  The MMU knows where the table is
+because it  has a register that stores the physical address of the
+current page table.
+
+  Aside: As with DNS, we need to bootstrap: the MMU's page table
+  register must have the *physical* address of the page table.
+
+Thus, there is no way for a CPU to refer to a physical address: it
+must go through the MMU.
+
+Assuming, for now, that this works, you can see that with virtual
+memory, programs don't need to be written to avoid each other's
+addresses.  Both programs can use virtual address 0x0000 if they want;
+each program's MMU table will map it to the appropriate physical
+address.  Moreover, as long as we keep the virtual-to-physical-address
+table updated, the operating system can move stuff around in physical
+memory as much as it likes.
+
+Let's deal with the details now.  (Eventually, we'll resolve the issue
+of "how can we give each program its own 32-bit address space when we
+only have 2^32 bits of physical memory?")
+
+----------------------------------------------------------------------
+Detail 1: Storing the table
+----------------------------------------------------------------------
+
+The most naive approach for storing the table mapping virtual
+addresses to physical addresses is just to keep a table that looks
+like this:
+
+  virtual    | physical
+  0x00000000 | 0xa416a936
+  0x00000001 | 0x3f9e673e
+  0x00000002 | 0x1ffe59bc
+
+Very quickly we can see that this is silly.  We should just use the
+virtual address as an index into a list of physical addresses.  So
+we'd store:
+
+  physical
+  0xa416a936
+  0x3f9e673e
+  0x1ffe59bc
+
+Unfortunately, this approach wont' work!  There is one entry for each possible
+address.  Each entry is 32 bits, and there are 2^32 possible entries:
+32*2^32 bits 16 GB per table.  That's more memory than we have
+available, and we didn't even get to use any of it for actual program
+data, or for the tables for other programs.
+
+  Aside: We're using the base-2 definition of a gigabyte, where 1GB
+  = 1024^3 bytes, not 1000^3 bytes.
+
+The solution to this problem is to use page tables.  You should've
+seen page tables in 6.004, but we'll review.
+
+To use page tables, we view memory in chunks, or pages, instead of as
+a continuous sequence of addresses.  Typically a page is 4KB (2^12
+bits).
+
+To specify a particular location in memory, we'll specify two things:
+1. The page number
+2. The offset into a page
+
+As an analogy, think about if I wanted to specify a particular word in
+a book.  Instead of saying something like "Look at the 4,598,200^th
+word in this book", I could say "Look at the 12th word in page 314".
+314 is the page number, and 12 is the offset.
+
+  Aside: This was just an example; the numbers 4,598,200, 314, and 12
+  were arbitrary.
+
+How does this help?  The MMU is going to keep a map of virtual page
+numbers to physical page numbers instead of a map of virtual addresses
+to physical addresses.  On a 32-bit system, there are 2^(32-12) = 2^20
+different pages.  The table size is now manageable: 32 bits * 2^20
+entries = 4MB.
+
+  Note: Why it's 32 bits and not 20 bits is a mystery that will be
+  revealed in a few paragraphs.
+
+The page table doesn't specify every possible physical address, but we
+can still access each one: the MMU will interpret the virtual address
+as specifying the virtual page number and the offset.  The MMU will
+translate the virtual page number to a physical page number, but keep
+the offset the same.
+
+In more detail, the MMU does the following:
+1. Read the top 20 bits of the virtual address to get the ID of the
+   virtual page
+2. Read the low 12 bits of the virtual address to get the offset
+3. Translate the virtual page into a physical page p
+4. Compute the physical address by doing p * (2^12) + offset
+
+  Example: Suppose our MMU has the following mapping
+
+     Virtual page | Physical page
+     ----------------------------
+              0   |   3
+              1   |   0
+              2   |   4
+              3   |   5
+
+   Suppose the CPU needs to access virtual address 0x00002148:
+   1. Top 20 bits: 0x00002 -> virtual page 2
+   2. Low 12 bits: 0x148 -> offset = 0x148
+   3. Virtual page 2 -> physical page 4 (via the table)
+   4. Physical address: 4*2^12 + 0x148 = 0x00004148
+
+      Aside: It should be extremely clear to you why multiplying by
+      2^12 there results in a concatenation of a 20-bit page address
+      and the 12-bit offset.
+
+So why are the page table entries 32 bits and not 20 bits?
+
+Page table entries are 32 bits because they contain a 20-bit physical
+page number and 12 bits of additional information.   What is in some
+of these bits is going to help us solve some other problems.
+
+----------------------------------------------------------------------
+Detail 2: Dealing with more virtual addresses than we have physical
+addresses
+----------------------------------------------------------------------
+
+A lingering problem for us: what happens if all programs require more
+than 2^32 virtual addresses' worth of data to be loaded into memory?
+The solution to this problem is simple: If it happens that, combined,
+all programs require more than 2^32 virtual addresses' worth of data
+to be loaded into memory, some of that data will reside in secondary
+storage.
+
+  Aside: The process by which you choose which pages to evict from
+  primary memory is pretty interesting:
+  http://en.wikipedia.org/wiki/Paging
+
+For this technique to work, the page table needs an additional bit of
+information: the "present" bit, which describes whether the page is
+currently in DRAM.
+
+If a program requests a page that is not present, a page fault is
+triggered, and the processor will execute a pre-defined page fault
+handler.
+
+Page tables also contain a read/write bit, which is set of the program
+is allowed to write to that virtual address.  A page fault is thrown
+if the program tries to write when the writable bit is not set.
+
+----------------------------------------------------------------------
+A naming view of virtual memory
+----------------------------------------------------------------------
+
+To round out our discussion of how virtual memory works, let's return
+to our naming view.  Again, virtual addresses are the names, physical
+addresses are the values, and the MMU performs the look-up via a
+cleverly constructed table.  The context for the look-up algorithm is
+the pointer to the current table in the MMU.
+
+With this viewpoint, you can see that we're getting all of the
+benefits of naming:
+- Hiding: a program cannot access physical memory that's not in its
+  page table -- it simply cannot name it
+- Controlled sharing: two page tables can map to the same physical
+  page
+
+     Note: we're still living under the assumption that programs don't
+     communicate; in general, we want to allow a much stronger
+     communication ability than this controlled sharing.
+
+- Indirection: we can control where and how a program's memory is
+  stored.  If two programs use the library, we can map library pages
+  in both page-tables.  If we run out of physical memory, we can
+  temporarily write pages to disk.  The program doesn't need to deal
+  with any of this.
+
+======================================================================
+Protecting the page table
+======================================================================
+
+Remember that our original goal was to prevent a program from
+accessing another program's memory.  Given all we've done here, have
+we succeeded in this goal?  No!  For example, a determined program
+could change the page table address register in the MMU or modify the
+page-fault handler.
+
+To prevent this, we need to change the processor.  We'll allow two
+modes of execution:
+1. User mode
+2. Kernel mode
+
+The processor maintains a U/K bit that stores the current execution
+mode.  In user mode, the processor does not allow modifying the page
+table register or the U/K bit.  In kernel mode, the processor does
+allow it.  Code that executes in kernel mode is called the OS kernel.
+
+This idea is reflected in the page table via a user bit.  If this bit
+is not set for a particular entry, a program in user mode does not
+have access to that virtual address, and a page fault will be thrown.
+This allows us to protect the kernel's memory from user programs.
+Remember that the kernel must be paranoid about anything that
+user-mode code has access to.  It can't assume that user-mode code has
+a valid stack, or anything like that.
+
+----------------------------------------------------------------------
+Transitioning from user mode to kernel mode (and back)
+----------------------------------------------------------------------
+
+These three extra bits -- P, R/W, U/S -- were used to determine
+whether the hardware should trigger a page fault under a certain
+access (e.g., a program trying to write to an address that it doesn't
+have write permissions for).  A page fault is a special type of
+interrupt.  Part of the kernel's job is to manage interrupts (and thus
+page faults).
+
+When an interrupt happens, it's handled via a special instruction:
+
+  // special instruction that calls interrupt x
+  interrupt(x):
+    U/K bit = K
+    handler = handlers[x]
+    call handler
+    U/K bit = U // the instruction that does this is IRET on x86
+
+This instruction is important: it's how we get the kernel to take over
+and do things that only the kernel can do.  And it's about to have
+more relevance than just page faults in a second..
+
+======================================================================
+OS abstractions
+======================================================================
+
+Now we know all about virtualizing memory.  We will see in future
+lectures that virtualization also works well for CPUs and
+communication links between programs.  However, it does *not* work as
+well for things like disks, displays, the network, etc.  Why?  These
+entities are not portable, and don't really allow sharing.
+
+Clearly, though, programs are able to use these devices.  This is done
+with OS abstractions.  So we see that virtualization is not the only
+technique an operating system uses to enforce modularity.
+
+The kernel provides abstractions for these devices:
+- A file system for the disk
+- A windowing system for the display
+- TCP/UDP connections for the network
+
+A major challenge is designing good abstractions.  The next hands-on
+and recitations will discuss UNIX's choice of OS abstractions.
+
+The way the OS presents the abstractions to programs is with a set of
+function calls, called "system calls".  The kernel implements these
+functions, but hides the raw interfaces from the programs.
+
+Consider open() and read().  Implementation of these functions
+requires direct access to the disk.  If the kernel allows programs
+access to the disk, buggy programs can corrupt the disk.  Instead, we
+want programs to access the disk only via filesystem abstractions.
+
+Thus, our system calls are implemented via interrupts, as above.
+
+======================================================================
+Summary
+======================================================================
+
+Here's what we saw today:
+
+- An operating system enforces modularity on a single machine via
+  virtualization and abstraction.  To do this, it needs to prevent
+  programs from referring to each others' memory (among other things)
+
+- Virtual memory is the mechanism that operating systems use to
+  prevent programs from referring to each others' memory.  Programs
+  refer to virtual addresses, which the Memory Management Unit
+  translates to physical addresses by using a page table.
+
+- In this process, the kernel acts as a mediator.  It handles
+  references to invalid addresses (which trigger page faults), sets up
+  the page tables for running programs, etc.  The kernel is, in some
+  sense, protecting itself from the user programs, and protecting the
+  user programs from each other.
+
+- The OS kernel also provides abstractions that allow user programs to
+  access various devices (disk, network, etc.).  Access to the raw
+  device interfaces by untrustworthy user programs is undesirable, so
+  the OS provides system calls for users, and handles the raw access
+  itself.
+
+- Page faults and system calls are implemented in the same way: via
+  interrupts.  Interrupts are calls from the program into the
+  operating system.
+
+In all of this, we made assumptions:
+1. One CPU per program
+2. Programs don't need to communicate
+3. No faults in the OS
+
+Over the course of the next three lectures, we'll get rid of all of
+them.  In doing so, you'll see how the technique of virtualization can
+be applied to more than just memory.

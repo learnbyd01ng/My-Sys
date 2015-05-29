@@ -1,0 +1,486 @@
+6.033 - Coping with Complexity
+Lecture 1
+Katrina LaCurts, lacurts@mit.edu
+
+======================================================================
+Administration
+======================================================================
+
+- The schedule on the website has all assignments, including
+  preparation.  You should be reading the papers for recitations
+  before the recitation itself.
+- This class is enormous and we need to keep our recitations
+  balanced.  There is a form online for everyone to enter their time
+  preferences.  These need to be entered by tonight, after which we
+  will assign you a permanent recitation section.
+
+======================================================================
+Introduction to Systems
+======================================================================
+
+This class is "Computer Systems Engineering".  What is a system?  "A
+set of interconnected components that has an expected behavior
+observed at the interface with its environment", according to your
+textbook.
+
+You've all interacted with systems: the web, Linux, etc., are all
+systems.
+
+In this class we'll study the design of systems, their components, and
+their internals.  The 6.033 approach to studying systems involves a
+lot of moving parts:
+
+- Lectures/book: Big ideas and example.
+- Recitations: Read papers describing successful systems.
+- Hands-ons: Play with successful systems
+- Design project: You practice designing and writing
+  - Designing: choose the problem, tradeoffs, structure
+  - Writing: Explain core ideas concisely.
+- Exams: Focus on reasoning about system design
+
+This is a CI-M class: we expect you to take writing seriously.
+
+So given that this is an entire class about computer systems, there
+must be something that makes building systems difficult.  What is it?
+Complexity.
+
+======================================================================
+Complexity
+======================================================================
+
+"Complexity" is a vague term.  Complexity within a system design might
+mean lots of components, lots of connections, an irregular design, a
+design that's difficult to describe, a design that requires many
+people to maintain it, etc.
+
+Let's put this into context.  How complex do systems really get?  One
+way to get a rough measure of complexity is to look at how many lines
+of codes it takes to build a system.
+
+   Aside: "Lines of code" is almost certainly not the best metric to
+   measure complexity, but it gives us a rough estimate and is fine
+   for the purposes of this discussion.
+
+Consider the Linux kernel: this has 15-million lines of code.  The
+Large Hadron Collider has 50-million.  Facebook's front end -- the
+front end! -- has 62 million.
+
+You can imagine how difficult this is to build and maintain.  For one,
+just think of all of the people involved in maintaining it.
+
+Complexity limits what we can build.  The more complex a system is,
+the more expensive, harder to maintain, easier to break, etc., it is.
+You may have seen this yesterday in recitation.  The "right thing", or
+MIT approach, tends to lead to complex designs, and that can be bad.
+
+Before we continue, what makes systems get more complex?  Many things:
+adding a bunch of new requirements, trying to maintain high
+utilization (so using a network at full capacity, e.g.), trying to be
+excessively general.  You'll see some of these sources in my next few
+examples.
+
+As systems grow more complex, in addition to just getting harder to
+build/maintain, we see certain types of problems occur.
+
+----------------------------------------------------------------------
+1. Emergent properties
+----------------------------------------------------------------------
+
+Consider the following example:
+
+  Imagine an Ethernet link connecting two computers, A and B.  The
+  goal of Ethernet is reliable delivery; the endpoints need a way to
+  detect collisions.
+
+  In early versions of ethernet, the designers were experimenting with
+  a collision-detection method that allowed endpoints to listen while
+  sending, instead of just before.  If two endpoints are sending at
+  once, each (really, we only need at least one) would hear the data
+  from the other endpoint while they were still sending, know that a
+  collision occurred, and then a retransmission protocol would come
+  into play.
+
+  (Additionally no endpoint will start sending if it's already
+  receiving data; that would obviously lead to a collision)
+
+  The original Ethernet spec had a maximum rate of 3Mbps, and the
+  cables were <= 1km long.  Suppose A and B are using that version of
+  Ethernet, and that the link has a latency of 5 microseconds.
+
+    5 microseconds is the latency on a 1km link at ~60% the speed of
+    light, which is what happens in ethernet.
+
+  A can send 15 bits before the first bit arrives at B.
+
+  	You should remember this from 6.02!  15 bits is the
+  	bandwidth-delay product of this link (Remember that 3Mb/sec = 3
+  	bits per microsecond).
+
+  For collision-detection to work, A must send for 10 microseconds, to
+  detect a collision from the first bit of B.  (Otherwise, assuming
+  that B has also sent data, A will stop sending before the first bit
+  of B arrives and thus won't detect the collision).  This means that
+  for collision detection to work, A has to send at least 30 bits of
+  data.
+
+  At the time, the default header for Ethernet packets was 40 bits
+  long, so this was no problem: every packet was at least 40 (> 30)
+  bits long.
+
+  However, the first Ethernet standard upped the speed to 10Mbit/sec
+  on wires as long as 2.5km.  In this environment, endpoints need to
+  send at least 250 bits for collision detection to work.  But the
+  header was only 112 bits!  Thus, every packet had to be padded to at
+  least 250 bits, which we call the minimum packet size.
+
+The minimum packet size is an "emergent property" of Ethernet: a
+property that was not evident in the individual components of the
+system, but came about from combining those components.  Surprises, if
+you will.
+
+----------------------------------------------------------------------
+2. Incommensurate Scaling
+----------------------------------------------------------------------
+
+A second problem with complexity: it often leads to difficulty in
+scaling.  Small designs don't work at scale.
+
+  Consider routing on the Internet.  In general, a routing table has
+  O(n^2) entries: the shortest path from each source to each
+  destination.  In the early Internet, we could use a single routing
+  protocol.  But we can't on the Internet today: imagine a routing
+  table with every pair of Internet hosts in it.  Thus, we use
+  hierarchical routing.
+
+  Now consider addressing on the Internet.  Because of the way IP
+  addresses were originally allocated in the Internet, *most*
+  addresses had 16 bits to specify the network (you can think of the
+  network as the entity controlling a particular portion of IP
+  addresses.  These entities are things like universities, large
+  companies, government agencies, ISPs, etc.) and 16 bits to specify
+  the host.  Thus, we were limited to 2^16 networks.  This limitation
+  became a problem and led to the development of NATs -- network
+  address translators -- and IPv6.  NATs in particular add a whole new
+  level of complexity.
+
+----------------------------------------------------------------------
+3. Propagation of Effects
+----------------------------------------------------------------------
+
+A third problem with complexity: propagation of effects.  Small
+changes lead to surprising effects.
+
+  Consider a phone network where we add a simple feature such as call
+  forwarding.  What should happen if A forwards to B who then forwards
+  to A?
+
+  Or imagine some other features:
+  - Call-number delivery blocking
+  - Automatic callback
+  - Itemized billing
+
+  All of these are fairly small and seemingly simple.  Suppose A has
+  Call-number delivery blocking, and B has automatic callback and
+  itemized billing.  If A calls B, B cannot see the number -- because
+  of the call-number delivery blocking -- so how does he know who to
+  call back?  And how should this call appear on B's itemized bill?
+
+  This is an example of cascading requirements: more requirements led
+  to more complexity, and also unexpected complexity.
+
+To summarize: complexity limits what we can build, can lead to
+emergent properties and a propagation of effects, and generally does
+not scale.  Thus, one of our major goals when designing systems is to
+limit complexity.
+
+As we learn to mitigate complexity, we'll also see that many design
+problems are trade-offs, where improving one part of a system means
+degrading another.
+
+  Consider circuit design.  Making a circuit run at a higher clock
+  rate increase power consumption and the risk of timing errors.
+  Reducing the risk of timing errors by making the circuit physically
+  smaller means there is less area available to dissipate heat
+  (particularly an issue since the power consumption is increased).
+
+======================================================================
+Ways to mitigate complexity: modularity and abstraction
+======================================================================
+
+We manage complexity in computer systems by following certain design
+principles.  Many of these are discussed in Chapter 1 of your
+textbook.
+
+We'll start this class by talking about two principles: modularity and
+abstraction.  Over the next few lectures, you'll learn how these
+principles are put into practice in today's operating systems.  Later
+in the course you'll see these principles, and others, applied to
+networks and transaction-processing systems.
+
+----------------------------------------------------------------------
+Modularity + Abstraction
+----------------------------------------------------------------------
+
+Imagine we're building Katrina's Amazing Web Suite (KAWS), which
+contains a web server -- which hosts websites -- and a web browser --
+which renders websites.  We write the code for these two services all
+bundled together into a single file, kaws.c, compile it and ship this
+out to clients.
+
+Unfortunately, there was a bug in the web browser that causes it to
+occasionally crash.  When a client's KAWS browser crashes, what will
+happen to their web server?
+
+It will crash too!
+
+  A more subtle issue: The browser would also have access to the
+  server's memory.
+
+One problem with this design is that it's not modular.  Modular
+systems are divided into components, or modules, such that we can
+consider the implementation and interfaces of these modules
+separately.  Modularity is one way to handle complexity: modular
+systems are easier to reason about and easier to manage, because they
+are also easier to change/improve: it's easier to change a module than
+the entire system.  Finally, modular designs reduce fate-sharing: if
+one module crashes, the rest have a good chance of being okay.
+
+Our initial KAWS design also lacked another key property: abstraction.
+With proper abstraction, I should be able to specify interfaces
+without specifying implementation.  This is a familiar concept from
+software engineering.
+
+  Examples of abstraction: We don't need to know how a transistor
+  works in order to program, or how assembly language works to use
+  Java, or how Java works to use a word processor implemented in it.
+
+Good abstraction decreases the number of connections between modules,
+which in turn decreases complexity.
+
+Some common modularity/abstraction techniques:
+
+  - Layers, as in network protocols.  You saw in 6.02 that we start
+    with a physical layer (bits), then move up to packets, then to the
+    transport layer that handles routing and addressing, then to the
+    application layer.  This design allowed us to, for instance, build
+    a routing protocol "on top" of a physical medium without caring
+    how the physical medium worked (e.g., a link-state routing
+    protocol does not care whether it's running over Ethernet, wifi,
+    etc.).
+
+  - A hierarchy, as in routing, which I described earlier.  Hierarchy
+    also comes up in domain names, where we have the "edu." domain,
+    the "mit.edu." domain, the "www.mit.edu." domain, etc.  You'll see
+    next week that this hierarchy allows the domains to be managed in
+    an efficient and distributed fashion.
+
+Designing systems is all about deciding on the set of components
+(modules) for a system, as well as their interfaces; it's all about
+getting the modularity and abstraction right.  Once a system has been
+built, it's much easier to change the module than the modularity.  In
+line with this, we try to design systems for iteration, and keep the
+designs simple.  You will see more of this as the course goes on.
+
+======================================================================
+Enforced Modularity
+======================================================================
+
+Back to our KAWS example.  We can see now that we need a more modular
+design.  Let's try to implement modularity with software engineering:
+
+Class WebBrowser:
+  main()
+  ...
+
+Class WebServer:
+  loadURL()
+  ...
+
+This is certainly the start of a modular design.  Is the modularity
+enforced, though?  Could errors propagate between the modules?
+
+Indeed, the modularity here is not enforced.  The compiler/language
+only protects the components from each other a little bit.
+
+  - In C, a misbehaving function can overwrite memory in some other
+    module.
+
+  - In Java, we can't overwrite memory, but if a component crashes or
+    throws an uncaught exception, or goes into an infinite loop, then
+    the entire thing stops working.
+
+This type of modularity is "soft modularity"; nothing is forcing the
+interactions among modules to their defined interfaces.
+
+We want "enforced modularity": modularity that is enforced by an
+external mechanism.
+
+======================================================================
+Enforcing Modularity with a Client/Server Model
+======================================================================
+
+There are lots of different ways to enforce modularity.  Let's start
+with a second: the client/server model.  We start by putting each
+component on a different machine:
+
+       M1                      M2
+ ---------------         --------------
+|   Web client  |       |  Web server  |
+|(e.g., browser)|       |              |
+ ---------------         --------------
+
+These two components aren't much use if they're totally isolated; we
+need them to communicate.  The way they will do this is by sending
+messages:
+
+       M1                                 M2
+ ---------------                    --------------
+|   Web client  | <-- messages --> |  Web server  |
+|(e.g., browser)|                  |              |
+ ---------------                    --------------
+
+Specifically, we would expect to see many requests/responses:
+
+  M1               M2
+     --- load --->
+     <-- result --
+
+These messages are known as remote procedure calls, or RPCs.  We're
+going to think of them in comparison (and contrast) to procedure
+calls.
+
+How does this model help us?
+- Messages don't allow components to overwrite the memory of other
+  components.
+- If one component crashes, it doesn't cause the other component to
+  crash.
+- Client can time out, or retry.
+
+So fate-sharing is reduced.
+
+It's possible that messages can be malformed/malicious; we need to
+carefully validate messages before processing them.  This isn't always
+easy, and we'll talk more about it later in the course.
+
+The client/server model is used in all sorts of places:
+- To share data (e.g., on the web) 
+- To allow remote access (e.g., to a database or a bank account)
+- To create a trusted third part (e.g., ebay runs auctions all parties
+  trust)
+
+----------------------------------------------------------------------
+PCs and RPCs
+----------------------------------------------------------------------
+
+Now, how will our client and server interface with this model,
+particularly the RPCs?  As a programmer, it would nice to be able to
+still call load() at the web client and receive a page; i.e., it'd be
+nice if these remote procedure calls looked like procedure calls.
+
+So let's try it; we can do this with stubs.
+
+Class webBrowser:
+  def main():
+    html = browser_load_url(URL)
+    ...
+
+  def browser_load_url(url): # this is the stub
+    msg = url
+    send request
+    wait for reply
+    html = reply
+    return html
+
+Class WebServer:
+  def server_load_url(url):
+
+  def handle_server_load_url(url): # this is the stub
+    wait for request
+    url = request
+    html = server_load_url(URL)
+    reply = html
+    send reply
+
+Stubs are nice because they can be automatically generated, and can
+handle converting the objects into a proper on-wire representation.
+Programmers can use the load() interface and ignore the internals --
+abstraction!
+
+Now, what can go wrong with this?  Remember that and RPC is not a
+procedure call: there is a network in the middle of these machines.
+Suppose that the network loses a request or response:
+
+Client                              Server
+  -- load("view.html?Item") --> 
+                    X-----------------
+
+Well, the client could just retry:
+
+Client                              Server
+  -- load("view.html?Item") --> 
+                    X-----------------
+  -- load("view.html?Item") -->
+  <-----------------------------------
+
+What if we had a different request, though:
+
+Client                            Server
+  -- load("buy.html?Item&ccNo=xxx") --> 
+                    X------------------
+  -- load("buy.html?Item&ccNo=xxx") -->
+  <------------------------------------
+
+Is that the behavior we want?  No; we just bought two items when we
+only wanted one.
+
+All right, so let's do the following: we'll filter duplicate
+requests.  This takes a bit more work on the server's side, but it's
+do-able:
+
+Client                                     Server
+  -- load("buy.html?Item&ccNo=xxx") -->  [Saved Responses
+                    X------------------  [Client | UID | Reply
+  -- load("buy.html?Item&ccNo=xxx") -->
+  <------------------------------------   <- replay result from
+                                             table; don't
+                                             reprocess!
+
+Getting better, but now what if the server fails?  This is tricky.  We
+have an unknown outcome for load("buy.html"); did the server process
+the request or not?  Moreover, removing this unknown outcome requires
+heavy-duty techniques (which you'll see in April!).
+
+The most practical solution is to expose that RPCs and procedure calls
+are not the same.  The RPC caller must handle a serverFailed exception.
+
+======================================================================
+Summary + the Future
+======================================================================
+
+What you saw today is that complexity makes building systems
+difficult.  Complexity causes problems such as emergent properties,
+incommensurate scaling, etc.  We use techniques such as modularity and
+abstraction to bound complexity -- getting the correct
+modularity/abstraction is a major challenge of system design.
+
+Getting into the details, we want modularity in a strong sense: it
+should be enforced.  One way to enforce modularity is via the
+client/server model and RPCs.  System designers must deal with
+handling failures in this model; RPCs != PCs.  Handling failures will
+be a central challenge in 6.033.  Unfortunately, there is no algorithm
+for successful system design.  In recitation tomorrow, you'll study a
+complex system (Therac-25) that was designed poorly with drastic
+consequences.  In tutorial on Friday you'll start learning how to
+analyze and critique systems.
+
+In the next lecture, we'll talk about naming, which is what allows
+modules in a system to interact.  After that, we'll spend a few
+lectures studying in-depth how an operating system enforces boundaries
+between itself and applications running on it, and between
+applications running on the same machine.
+
+After operating systems, we'll move to networks, where we enforce
+modularity between machines instead of within a machine.  Then we
+study reliability and transactions, where you'll see techniques for
+handling hardware failures.  Finally, we'll study security, where
+we'll learn to handle malicious failures.

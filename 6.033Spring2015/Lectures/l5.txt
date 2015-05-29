@@ -1,0 +1,757 @@
+6.033 - Operating Systems: Bounded Buffers
+Lecture 5
+Katrina LaCurts, lacurts@mit.edu
+(many ideas taken from Sam Madden's Spring 2014 notes)
+
+======================================================================
+Previous Lecture
+======================================================================
+
+We all agree at this point that modularity is good, and that a
+client/server model does a nice job enforcing modularity.  Our current
+quest is to enforce modularity on a *single* machine, so that we can
+run multiple modules on one machine (the client/server model requires
+a separate machine per module).
+
+The entity that enforces modularity on a single machine is its
+operating system.  The primary technique that an operating system uses
+to enforce modularity is virtualization: the OS interposes between the
+program and the hardware, but provides the same interface.
+
+We saw that to enforce modularity on a single machine, we were going
+to have to deal with three problems:
+1. How to prevent programs from referring to each others' memory
+2. How to allow programs to communicate
+3. How to allow programs to share a single CPU such that one program
+   can't halt the progress of others
+
+Last time, we dealt with the first problem.  Virtual memory is the
+mechanism that operating systems use to prevent programs from
+referring to each others' memory.  Programs refer to virtual
+addresses, which the Memory Management Unit translates to physical
+addresses by using a page table.
+
+In this process, the kernel acts as a mediator.  It handles references
+to invalid addresses (which trigger page faults), sets up the page
+tables for running programs, etc.  The kernel is, in some sense,
+protecting itself from the user programs, and protecting the user
+programs from each other.
+
+The OS kernel also provides abstractions that allow user programs to
+access various devices (disk, network, etc.).  Access to the raw
+device interfaces by untrustworthy user programs is undesirable, so
+the OS provides system calls for users, and handles the raw access
+itself.
+
+The way that these system calls are implemented is the same as how
+page faults are handled: via interrupts.  Interrupts are calls from
+the program into the operating system.
+
+----------------------------------------------------------------------
+Our current assumptions
+----------------------------------------------------------------------
+
+To do all of that, we made some assumptions last week:
+1. One CPU per program
+2. Programs don't need to communicate
+3. No faults in the OS
+
+Today we're going to get rid of the second one.  We'll still assume
+one CPU per program, and that the kernel is correctly programmed, but
+we'll allow our programs to communicate.
+
+The abstraction that will provide this communication -- a bounded
+buffer -- is another application of virtualization: this time we're
+virtualization the communication link between a client and a server.
+A bounded buffer is conceptually very simple, but there are subtle
+details that will make its implementation tricky.
+
+======================================================================
+Basic Bounded Buffer Abstraction
+======================================================================
+
+To enforce modularity while still allowing programs to communicate,
+we're going to adopt the same message-passing paradigm we see in a
+client/server model.  Programs will not interact directly with each
+other, but instead will interact with the OS via send and receive
+calls.  This gives us a way to provide an RPC (remote procedure call)
+mechanism between the two processes.
+
+  Aside: To make a direct analogy to the client/server model, there,
+  the client and server never interacted directly, but instead
+  interacted with the Internet via send and receive calls.
+
+For this lecture, we're going to focus on getting one-way calling to
+work (i.e., one program sends, the other receives).  Once we have that
+in place, two-way calling is trivial: just use two bounded buffers.
+
+  Aside: A different design for this, rather than having the kernel
+  pass messages, is to arrange the page tables of the two processes to
+  share one common page of memory.  The two processes can implement
+  message passing via this shared page, in the same way that we
+  describe below.
+
+----------------------------------------------------------------------
+API
+----------------------------------------------------------------------
+
+A bounded buffer is a buffer that stores N messages.  The API that it
+exports is simple:
+
+   send(m) // add message m to the buffer
+   m <- receive() // get a message m from the buffer
+
+Why do we deal with N messages instead of just a single message?
+Having space for N messages lets us deal with bursty senders and
+receivers.  It's the same reason we have queues on the Internet.
+
+This abstraction is a lot like the UNIX abstraction of pipes, which
+you've seen in the UNIX hands-on and will see in recitation on
+Thursday.
+
+There are two subtleties already:
+1. If there are no messages in the buffer, the receiver may need to
+   wait, or "block"
+2. If the buffer is full, the sender may need to block until space
+   becomes free
+
+But these subtleties are not the main thing we're worried about.
+
+----------------------------------------------------------------------
+Concurrency
+----------------------------------------------------------------------
+
+Imagine that our two programs both try to access the buffer at the
+same time.  send() and receive() are interacting with some shared
+structure.  If we aren't careful, we might get some unexpected result:
+reading a message that has never been written, etc.  This is the issue
+of concurrency.
+
+Concurrency is a major source of complexity in systems, and one we'll
+return to repeatedly in this class.
+
+Some things to note about concurrency before we go on:
+- If two programs are executing concurrently, you cannot assume
+  anything about the order in which they are executed.  Program A
+  could complete all of its steps before program B, they could have
+  their instructions interleaved, etc.
+- You cannot assume that any single line of code will execute without
+  interruption.  For example, the line "x=x+1" is typically three
+  instructions in assembly language.  If Program A is executing that
+  instruction, Program B could interrupt this instruction at any
+  point.
+
+======================================================================
+Bounded buffer implementation for single sender
+======================================================================
+
+By the end of this class, we will have a full-fledged implementation
+of a bounded buffer.  We're going to work up to that with various
+attempts that don't work in all cases.  Each attempt will illuminate a
+particular concurrency issue.
+
+In any implementation, we need to know a few things:
+- When is it okay to write a new message to the buffer (i.e., when do
+  we have space in the buffer for a new message)
+- When is it okay to read a new message from the buffer (i.e., when is
+  there at least one message in the buffer)
+- Where do we write/read the next message from
+
+Let's say we want a bounded buffer of size 5.  We'll keep two
+variables:
+- in: the total number of messages written to the buffer
+- out: the total number of messages read from the buffer
+
+These variables will let us decide when it's okay to write and read
+from the buffer:
+- It's okay to write if we have fewer than 5 messages in the buffer,
+  i.e., there are fewer than 5 pending messages, i.e., in - out < 5.
+- It's okay to read if there are more than zero messages in the
+  buffer, i.e., if out < in.
+
+  Aside: Why not keep track of a single variable: how many messages
+  are in the buffer?  You'll see.
+
+The last thing to deal with is deciding where to write to/read from.
+We can't just write to "out"; it may be much larger than the buffer
+size.  What we want to do is wrap around after we've written to the
+5th slot.  We can use a modulus operator for this:
+- out mod 5 = next slot to write
+- in mod 5 = next slot to read
+
+  Example: Suppose my buffer is empty, and I insert a single message.
+  That message goes in buf[in] = buf[0], and then in=1, out=0.  The
+  next place to insert is buf[1], the next place to read is buf[out] =
+  buf[0].
+
+  If, at some point, in = 28, out = 26, then the next place to insert
+  is buf[28%5] = buf[3], and the next place to read is buf[26%5] =
+  buf[1].
+
+Here's the code.  In both functions, bb is a pointer to an instance of
+a bounded buffer (so you can have many of them):
+
+  send(bb, message):
+    while True: # Wait until it's okay to write
+      if bb.in – bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+        return
+
+  receive(bb):
+    while True: # Wait until it's okay to read
+      if bb.out < bb.in:
+        message <- bb.buf[bb.out mod N]
+        bb.out <- bb.out + 1
+        return message
+
+In both cases, we loop until it's okay to do our action (write or
+read), and perform the action before we increment the variable.
+
+There's very little happening here, but there is one thing we could
+change: what if we swapped the action and the increment?  E.g., in
+send, what if we did:
+
+  send(bb, message):
+    while True: # Wait until it's okay to write
+      if bb.in – bb.out < N:
+        bb.in <- bb.in + 1
+        bb.buf[bb.in-1 mod N] <- message
+        return
+
+Seems innocuous enough.  Or is it?
+
+Imagine that the buffer has zero elements in it.  Program 1 has a
+message to send.  The if condition evaluates to True, and Program 1
+increments bb.in.  However, at the same time, Program 2 is trying to
+read.  Program 2's if-statement will also evaluate to true: right now,
+bb.out = 0 and bb.in = 1.  So Program 2 will try to read a message
+from the buffer, but none has been written yet.
+
+Tricky!  Swapping the increment and read/write statements won't work.
+
+----------------------------------------------------------------------
+Limitations of this implementation
+----------------------------------------------------------------------
+
+This implementation works concurrently on two CPUs.  Which is
+surprising!  Normally we have to do much more to achieve concurrency;
+all we had to do here was make sure we read/wrote before incrementing.
+
+So is that it?  Of course not.
+
+First, we still have an assumption that we're dealing with one program
+per CPU.  We'll need to remove that assumption for a completely
+correct bounded buffer implementation, and we won't do that until the
+next lecture.
+
+But even if we assume one program per CPU, we have another issue: this
+implementation only works for a single sender and a single receiver.
+
+======================================================================
+Multiple senders
+======================================================================
+
+Suppose we want two senders: A and B.  A calls send(bb, m1) and B
+calls send(bb, m2) concurrently.
+
+First of all, what should even happen?  Should we require that the
+receiver read m1 before m2?  Maybe, but let's go with something easier
+for now: we	want m1 and m2 to both end up in the buffer, and we don't
+care about their order (i.e., it doesn't matter if m1 is read before
+m2 or vice versa).
+
+Recall our implementation of send:
+
+  send(bb, message):
+    while True: # Wait until it's okay to write
+      if bb.in – bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+        return
+
+----------------------------------------------------------------------
+Case 1
+----------------------------------------------------------------------
+
+Here's one sequence of events that could happen:
+
+         A                     B
+  bb.in = 0, bb.out = 0
+  write m1 to buf[0]
+  set bb.in = 1
+                             bb.in = 1, bb.out = 0
+                             write m2 to buf[1]
+                             set bb.in = 2
+
+Everything worked!  buf contains m1 in slot 0 and m2 in slot 1.
+
+----------------------------------------------------------------------
+Case 2
+----------------------------------------------------------------------
+
+In the above example, everything that A needed to do executed before B
+did anything.  Let's see what happens when some of their instructions
+get interleaved.
+
+             A                            B
+  bb.in = 0, bb.out = 0
+                              bb.in = 0, bb.out = 0
+
+Since, in both cases, bb.in - bb.out < N, A will go ahead and write.
+And so will B:
+
+             A                            B
+  bb.in = 0, bb.out = 0
+                              bb.in = 0, bb.out = 0
+  write m1 to buf[0]
+                              write m2 to buf [0]
+  write 1 to bb.in
+                              write 1 to bb.in
+
+Now we're left with a buffer that only contains m2.  Which is clearly
+not what we want.
+
+This sequence of execution is an example of a race.  Both programs are
+running through the code at the same time, and one of them will
+"win".
+
+Races are tricky: we had convinced ourselves that the code above was
+correct, but we didn't imagine the case with two concurrent writers.
+Races are also hard to find: they are timing-dependent, and so don't
+always manifest.  You saw this here -- our first sequence of events
+led to a correct execution -- and also in the Therac-25 paper.
+
+Note that this code worked for a single sender and receiver, even
+though they were concurrent, because there was only one CPU
+manipulating in/out at a time.  (So removing our "one program per CPU"
+assumption is going to take some additional work to fix -- our
+original implementation won't even work with a single sender/receiver
+one we allow multiple programs per CPU).
+
+======================================================================
+Locks
+======================================================================
+
+In order for our bounded buffer to accommodate multiple senders, we
+need a new OS paradigm: locks.
+
+Locks allow only one CPU to be in a piece of code at a time.  They
+come with a simple API:
+- acquire(lock)
+- release(lock)
+
+  Aside: Often, if a lock is acquired, we say it's locked.  When it's
+  released, we say it's unlocked.
+
+Example: Suppose I wanted to following sequence of code to only be
+accessed by a single CPU at once:
+
+  x = x+1
+  y = x
+
+We could do the following:
+
+  acquire(x_lock)
+  x = x+1
+  y = x
+  release(x_lock)
+
+One important thing to note is that we did *not* write acquire(x) or
+acquire(y).  The meaning of "acquire" is "I just acquired a flag that
+is intended to proctect a particular object", not "I just acquired
+this object".
+
+If two CPUs try to acquire the same lock at the same time, one will
+succeed and the other will block.
+
+======================================================================
+Bounded buffers with locks
+======================================================================
+
+So let's try to add locks to our send() implementation.  We'll
+associate a lock with each bounded buffer, acquire it before access,
+and release it after access.  This should allow only one send() to
+execute at the same time.  If our code was correct with only one
+sender, then this should be too, right?
+
+To figure out the correct places to put our locks, let's see some of
+this in action.
+
+----------------------------------------------------------------------
+Demo
+----------------------------------------------------------------------
+
+Consider this code for send, which is similar to what we've been
+studying.  The only difference is that we use two global variables,
+buf and in.
+
+  send(int x)
+  {
+    buf[in] = x;
+    in = in + 1;
+  }
+
+Suppose CPU A sends messages 1, 2, and 3, and CPU B sends messages
+101, 102, and 103.  After executing these 6 calls to send, if buf is
+correct, it should contain messages 1, 2, 3, 101, 102, and 103, in
+*some* order (not necessary the order I just gave).
+
+Without locks, all sorts of things might happen:
+
+- Sometimes the output is correct!  It's always possible that our
+  execution proceeds as we wanted.
+
+- Sometimes some of the slots don't contain messages.  This happens when
+  both A and B write to the same slot in the array, and then both
+  increment in (e.g., A and B write to slot 0, A increments in to 1, B
+  increments it to 2.  slot 1 gets skipped.)
+
+- Sometimes there are too few elements.  This happens when both A and
+  B write to the same buf[in], and then increment in.
+
+  Example: in = 0, A and B both write to buf[0], A increments in to 1,
+  then B increments in to 1.  Note that we are *not* guaranteed that
+  in = in + 1 happens all at once.
+
+    Aside: in = in + 1 takes three separate instructions in assembly.
+
+Let's try another extreme: we'll put locks around every line of code:
+
+  send(int x)
+  {
+    acquire(&lck);
+    buf[in] = x;
+    release(&lck);
+    acquire(&lck);
+    in = in + 1;
+    release(&lck);
+  }
+
+What happens here?
+
+- We always have the correct number of elements (in = 6).  This is
+  because the increments always happen in order.
+
+- Some of the slots don't contain messages, though.  This happens when
+  both A and B write to the same slot in the array, and then both
+  increment in (e.g., A and B write to slot 0, A increments in to 1, B
+  increments it to 2.  slot 1 gets skipped.)
+
+The correct implementation, for what we want, is this:
+
+  send(int x)
+  {
+    acquire(&lck);
+    buf[in] = x;
+    in = in + 1;
+    release(&lck);
+  }
+
+Why?  Because we want the write and the increment to happen together,
+without interruption.  We want them to be a single, atomic action.
+
+----------------------------------------------------------------------
+Code
+----------------------------------------------------------------------
+
+In our original code, we might then try this:
+
+  send(bb, message):
+    while True:
+      if bb.in – bb.out < N:
+        acquire(bb.send_lock)
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+		release(bb.send_lock)
+        return
+
+This won't work!  Concurrent senders will both think they can write.
+One will get the lock and write, and then the other will get the lock,
+but it might be that the first sender filled up the buffer (so that
+the second shouldn't actually be writing).
+
+The correct code is:
+
+  send(bb, message):
+    acquire(bb.send_lock)
+    while True:
+      if bb.in – bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+		release(bb.send_lock)
+        return
+
+----------------------------------------------------------------------
+Atomic actions
+----------------------------------------------------------------------
+
+Locks create atomic actions: sequences of code that are executed in
+their entirety, one at a time.  In our second attempt above, putting a
+lock around the increment ensured that all of its instructions would
+happen correctly, but wasn't enough to ensure that we'd use the
+correct slot in the buffer.
+
+One problem we have is deciding what should be an atomic action.  If
+we put too much code inside locks, we my find that everything works
+correctly, but performance suffers.
+
+  Aside: Performance suffers because we lose the benefits of
+  parallelism: the ability to execute multiple actions at once.  We'll
+  learn more about parallelism in a few lectures.
+
+If too little code is protected by a lock, we may get unexpected
+behavior, as we saw above.
+
+It's often helpful to think of locks as protecting invariants.  For
+bounded buffers, this invariant is the statement that tells us whether
+it's safe write (in - out < N).  It's okay to release the lock when
+the invariant holds, but not when it's broken -- e.g., in the middle
+of send(), when we've put the message in but haven't updated in.  At
+this point, we're in an inconsistent state.  Locks prevent other CPUs
+from seeing an inconsistent state.
+
+======================================================================
+Locks for file systems
+======================================================================
+
+Locks apply to more than just bounded buffers.  Consider a file system
+that has a move() function, to move a file from one directory to
+another.  This takes two steps: removing the file from directory 1 --
+or *unlinking* it from directory 1 -- and placing it in directory 2 --
+or linking it to directory 2:
+
+  move(dir1, dir2, filename):
+    unlink(dir1, filename)
+    link(dir2, filename)
+
+There are quite a few approaches we could take to locking here.
+
+----------------------------------------------------------------------
+Approach 1: Coarse-grained locking
+----------------------------------------------------------------------
+
+  move(dir1, dir2, filename):
+    acquire(fs_lock)
+    unlink(dir1, filename)
+    link(dir2, filename)
+    release(fs_lock)
+
+This approach uses a single lock for both operations.  And is likely
+correct!  It operates just as if we had a single CPU.  But it also
+means that there can be no concurrency within the file system, even if
+we're accessing different directories.  For instance:
+
+  move(dir1, dir2, file1.txt)
+  move(dir3, dir4, file2.txt)
+
+Those operations can't happen concurrently.
+
+  Aside: For an even greater performance hit, you can imagine fs_lock
+  (for "filesystem lock") being used any time any CPU accesses the
+  filesystem (i.e., it would also be held in the implementation of cp,
+  ls, etc.).
+
+We'll consider this approach coarse-grained: using one lock for
+everything.  While usually correct, it's also usually slow.
+
+----------------------------------------------------------------------
+Approach 2: Fine-grained locking
+----------------------------------------------------------------------
+
+So as not to get the performance hit of coarse-grained locking, let's
+try using one lock per directory:
+
+  move(dir1, dir2, filename):
+    acquire(dir1.lock)
+    unlink(dir1, filename)
+	release(dir1.lock)
+	acquire(dir2.lock)
+    link(dir2, filename)
+    release(dir2.lock)
+
+Now that each directory has its own lock, we can have more concurrent
+operations (move(dir1, dir2, file1.txt) and move(dir3, dir4,
+file2.txt) can happen at once, e.g.).  But is this correct?
+
+Notice that in the middle of this code -- after the first release,
+before the first acquire -- the file is not in any directory.  What
+would happen to the file if, say, dir2 got deleted or renamed in the
+interim?
+
+The reason this implementation is incorrect is because we allowed the
+CPU to see an inconsistent state.  Our invariant involves both dir1
+and dir2, so we need the link and the unlink to be atomic.
+
+----------------------------------------------------------------------
+Approach 3: Fine-grained locking + holding both locks
+----------------------------------------------------------------------
+
+  move(dir1, dir2, filename):
+    acquire(dir1.lock)
+	acquire(dir2.lock)
+    unlink(dir1, filename)
+    link(dir2, filename)
+	release(dir1.lock)
+    release(dir2.lock)
+
+We're going to stick with our fine-grained locks, but hold both of
+them at once, because we need the link and unlink to be atomic.  This
+removes the previous issue: at no point is an inconsistent state
+revealed to the CPU.
+
+But, of course we have a problem.  Suppose CPUs A and B are executing
+this code concurrently:
+
+  A: move(M, N, file1.txt)
+  B: move(N, M, file2.txt) // note M and N swapped
+
+A will first acquire the lock for M.  Concurrently, suppose B acquires
+its first lock, which is for N.  Now, A needs to acquire a lock for N,
+and B needs to acquire a lock for M.  But they can't!  The other CPU
+holds the lock, and won't release it.
+
+This situation is known as deadlock: two CPUs are holding locks, each
+waiting for the lock the other has.
+
+----------------------------------------------------------------------
+Approach 4: Fine-grained locking + solving deadlock
+----------------------------------------------------------------------
+
+We got into this deadlock situation because A acquired M's lock before
+N's, and B acquired N's lock before M's.  One way to solve this
+would've been to make sure the two CPUs acquired the two locks in the
+same order: say, M's then N's.
+
+In general, to solve deadlock, one approach is to look for all places
+where multiple locks are held, and ensure that in each case, locks are
+acquired in the same order.  This ensures no locking cycles, which
+ensures no deadlock.
+
+For us:
+
+  move(dir1, dir2, filename):
+    if dir1.inum < dir2.inum:
+      acquire(dir1.lock)
+      acquire(dir2.lock)
+    else:
+      acquire(dir2.lock)
+      acquire(dir1.lock)
+    unlink(dir1, filename)
+    link(dir2, filename)
+	release(dir1.lock)
+    release(dir2.lock)
+
+Here, dir.inum is the inumber of a directory, which is the
+identification number of the inode.
+
+This approach finally might work, but it's painful.  It requires
+global reasoning about all locks, and also that we have a way to
+ensure locks are acquired in the same order (i.e., some sort of
+identifier that we can compare).
+
+The good news here is that deadlocks are not subtle.  The program
+stops at the exact place where deadlock occurs.
+
+----------------------------------------------------------------------
+Locking discipline summary
+----------------------------------------------------------------------
+
+The point of this exercise was to show you multiple locking
+disciplines, and to illustrate how difficult it is to get the "right"
+one.  A coarse-grained approach is usually correct, but usually slow.
+Typically we start with a coarse-grained approach and refine as
+needed.
+
+======================================================================
+Implementing locks
+======================================================================
+
+At this point, we've applied locks to bounded buffers and to
+filesystems.  Let's talk about how we might actually implement
+acquire() and release() (Note: this is a simple strawman design):
+
+  acquire(lock):
+    while lock != 0:
+      do nothing
+    lock = 1
+
+  release(lock):
+    lock = 0
+
+Imagine the following: both CPUs run acquire(lock), both see lock = 0,
+both set lock = 1, and both start executing the code after acquire.
+
+A race condition!  Checking lock != 0 and setting lock = 1 should be
+atomic.
+
+So we have a chicken-and-egg problem: we need locks in order to
+implement locks.  This is just like virtual memory, where we needed a
+way to get the page table's physical address, or DNS, where we needed
+a way to get the IP address of the root server.
+
+----------------------------------------------------------------------
+Atomic instructions
+----------------------------------------------------------------------
+
+To solve this problem, we actually need hardware support; we need an
+atomic hardware instruction that combines both operations.  Luckily,
+most processors provide such a solution.
+
+One such atomic instruction on x86: XCHG, which atomically swaps a
+source and destination register:
+
+  XCHG reg, addr
+    temp <- mem[addr]
+    mem[addr] <- reg
+    reg <- temp
+
+Now we can implement acquire:
+
+  acquire(lock):
+    do:
+      r <= 1
+      XCHG r, lock
+    while r == 1
+
+How does this work?  If lock = 0, after XCHG, r will be 0, and the
+loop will terminate.  Otherwise, someone else is holding lock, and we
+need to keep trying.  When we succeed, we will atomically have
+installed 1 into lock, so others will block.
+
+How does the hardware make this operation atomic?  There is a
+controller responsible for managing access to memory.  We can
+partition the overall system memory across multiple controllers such
+that each memory location is the responsibility of one controller.
+
+To perform an atomic operation, a CPU must obtain permission from the
+controller.  The controller ensures that only one processor has
+permission at a time.  Processors request permission by sending
+messages to the controller.
+
+What if two messages arrive simultaneously at the controller on two
+links?  Message router services incoming messages sequentially.  One
+CPU will use and will have to retry.
+
+======================================================================
+Summary
+======================================================================
+
+What we saw today:
+
+- Bounded buffers allow programs to communicate.  They are
+  conceptually simple, but tricky in implementation because of
+  concurrency and our desire to have multiple senders.
+
+- Locks allow us to write correct concurrent programs by protecting
+  atomic actions.  Getting the correct locking discipline is *tricky*:
+  race conditions are hard to debug, deadlock can be complicated to
+  avoid, coarse-grained locking suffers a performance hit, etc.
+
+In our quest to enforce modularity on a single machine, we've now
+solved two problems: programs can't refer to each other's mememory
+(last week: virtual memory), but they *can* communicate via bounded
+buffers.
+
+We are still working under the assumption that we have one program per
+CPU.  We will remove that assumption next week.

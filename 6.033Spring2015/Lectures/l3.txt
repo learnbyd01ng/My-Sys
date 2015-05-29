@@ -1,0 +1,528 @@
+6.033 - Naming
+Lecture 3
+Katrina LaCurts, lacurts@mit.edu
+
+======================================================================
+Previous Lecture
+======================================================================
+
+Last week, we talked about complexity and how it limits what we can
+build.  One of the goals in system design is to limit complexity, and
+we can do this via modularity and abstraction.  In this class, we want
+"enforced modularity", where there is some external mechanism
+preventing errors from propagating between modules.  One way to
+enforce modularity is via a client/server model.
+
+What we will focus on today is the following problem, which I
+completely ignored (intentionally) in the last lecture: For the client
+and the server to interact -- really, for any modules to interact --
+they need to know each other's names.
+
+  E.g., to call load("www.amazon.com/view.html?fishtank"), the client
+  needed the name of the website -- www.amazon.com -- and the name of
+  the page it wanted -- www.amazon.com/view.html?fishtank.
+
+Naming on the Internet is a common example, and one that we'll study
+in-depth later today.  But naming as a concept is pervasive in all of
+computer systems; though the exact details are different in each case,
+there are commonalities.
+
+So today we're going to discuss naming systems in an abstract sense.
+Their goals, the questions that we ask when confronted with a new
+naming system, etc.  Then we'll return to the issue of names on the
+Internet with a case-study on DNS.  DNS is a particularly good example
+for us right now because it uses a client/server model.  It will also
+be your first look into the design of a specific system, and the pros
+and cons of that design.
+
+======================================================================
+Naming in General
+======================================================================
+
+Rather than start you out with a definition, I'm going to start with
+examples.  Here are some more examples of names:
+
+  csail.mit.edu - hostname
+  katrina@csail.mit.edu - email
+  katrina - username
+  R0 - x86 processor register name
+  main() - function name
+  WebBrowser - class name
+  /mit/6.033/www/schedule.shtml - path name (fully-qualified)
+  schedule.shtml - path name (relative)
+  http://mit.edu/6.033/www/schedule.shtml - URL
+  617-253-7341 - Phone number
+  128.30.2.121 - IP Address (an address is a special type of name,
+                             which we'll talk about later today)
+
+So what exactly is a name?  We think about computer systems as
+manipulating objects.  The way that systems pass around these objects
+is either by creating a copy of the object -- passing by *value* -- or
+by using a reference to the object: a name.
+
+----------------------------------------------------------------------
+Benefits of using names
+----------------------------------------------------------------------
+
+In general, names provide communication and organization.  We use
+names to achieve modularity, as you saw in the client/server example:
+names let us reference another module.  There are all sorts of useful
+things that names do:
+
+1. Retrieval.  Names let components of a system retrieve objects.  In
+   our client/server example, the client is able to access the
+   fishtank website just buy knowing its name (and in this example to
+   continue to retrieve it at a later date).
+
+2. Sharing.  Multiple components or users can name a shared object.
+   For example, multiple users can bid on the same item in an ebay
+   auction by naming it.  In passing arguments to a function, the
+   receiving function can manipulate the object if it's passed by
+   name.
+
+   This type of sharing saves space as well: we're not storing or
+   sending entire copies of an object, only its name.
+
+      Aside: There are, of course, times when we want to pass an
+      object by value.  For instance, if we *don't* want the entity
+      we're sharing the object with to manipulate our own copy.
+
+3. Hiding.  Names let us achieve modularity.  As part of that modular
+   design, names allow us to hide implementation details.  In a file
+   system, I can name a file without having to worry about how the
+   file system's memory is laid out, for example.
+
+   We can do another type of hiding with names: access control.  Users
+   (or other components of a system) can only access an object if they
+   know its name.  For example, a Google doc that has the privacy
+   setting "Anyone who has the link can view".
+
+4. User-friendly identifiers.  It is a lot easier to refer to a
+   filename -- homework.txt -- than, say, a memory address --
+   0x051DE540.
+
+5. Indirection.  Related to that example above, since files are named,
+   the operating system is free to move the actual location of the
+   file data in memory without notifying the user.  If you're ever
+   defragmented your harddrive -- a popular pasttime of Windows users
+   -- you've seen this happen.
+
+   More broadly, indirection is when component A only knows about a
+   fixed name N.  The system can change what name N refers to without
+   changing A.
+
+   This isn't desirable for *every* name, for instance if I buy a
+   particular fishtank on Amazon, and Amazon changes what that name
+   refers to and all of a sudden I don't get a fishtank.  But it is
+   desirable in many cases; we'll see a prominent one later today.
+
+We'll see these benefits and others in-action when we discuss DNS.
+
+----------------------------------------------------------------------
+Abstract view of naming systems
+----------------------------------------------------------------------
+
+At this point, you've seen a lot of examples of names, and their use
+should be well-motivated.  In general, what makes something a naming
+scheme?  Alternatively, what do all of these examples have in common?
+
+In any naming scheme, we have three things:
+
+1. A set of possible names, or a "name space"
+
+   Example: @!@%# is not in the name space of Python variables (you're
+   not allowed to start variable names with @)
+
+2. A set of possible values that the names map to (the "universe of
+   values")
+
+3. A look-up algorithm that translates a name into a value, or set of
+   values, or "none".
+
+For a filesystem, e.g.: Our namespace might include any combination of
+ASCII symbols.  Our set of possible values is the actual files on the
+machine.  A look-up algorithm would translate a file name such as
+/usr/bin/emacs to an actual file, if that file exists.
+
+  Aside: How that particular look-up algorithm works is a topic for a
+  future recitation
+
+This look-up algorithm can optionally have a "context".  The context
+tells the look-up algorithm where to look.
+
+  Suppose I have a file stored in my home directory called "file.txt".
+  I could access that file from anywhere by using the name
+  /home/katrina/file.txt: this is the absolute path of my file.  If I
+  was already in my home directory (/home/katrina/), then I could
+  access the file with the name file.txt.  The home directory is the
+  context for that name.
+
+When we are presented with a new naming system, the first thing to do
+is to try to figure out these basic things.  E.g., what is the syntax
+of names?  What are the values?  What context is used to resolve
+names, and who specifies it?  Is a particular name global (i.e.,
+context-free) or local?   
+
+  You should be particularly familiar with that last question in the
+  context of programming.
+
+We also try to understand the bindings.  Does every name have a value
+(or can you have "dangling" names)?  Can a single name have multiple
+values?  Does every value have a name (i.e., can you name everything)?
+Can a single value have multiple names (i.e., are there synonyms)?
+Can the value corresponding to a name change over time?
+
+To get a handle on all of these questions, we're going to answer these
+questions about a particular naming *system*: DNS.  This will allow
+you to see a naming scheme in action, as well as study the system that
+provides the look-up algorithm for that scheme.
+
+Later this week, when you discuss the UNIX paper, you should answer
+these questions yourself in order to understand it.
+
+======================================================================
+Naming on the Internet: DNS
+======================================================================
+
+Okay, so DNS.  DNS is the Domain Name System.  In DNS, names are
+hostname strings (e.g., web.mit.edu).  Values are IP addresses (e.g.,
+18.9.22.69).  So DNS maps hostname strings to IP addresses.
+
+Before we go any further, let's talk about addresses (as in an IP
+address).  An address is a type of name: it's a name that is used to
+locate an object.  If you send a packet to a particular IP address, an
+Internet router will know where to send that packet (so they know how
+to send packets to an IP address).  This works because IP addresses
+are structure and assigned in a particular way that makes routing
+possible.
+
+The same is *not true* for hostnames: a router does *not* know how to
+send a packet to www.mit.edu.
+
+  Aside 1: This is an example of layered naming.  We mapped one name
+  (hostnames) to another type of name (IP addresses).  This happens in
+  other places: URLs are names that contain other names (hostnames).
+
+  Aside 2: We're also seeing another one of the benefits of naming
+  here: routing.  Some names may be overloaded with location
+  information that lets us route.  IP addresses, but also phone
+  numbers (the area code specifies a location), and others.
+
+A natural question is why have hostnames on the Internet at all?  Why
+not just IP addresses?  After all, we've covered the benefits of
+names, but IP addresses *are* names; couldn't we just use those?
+
+One benefit here is just user-friendliness.  Hostnames are much more
+user-friendly than IP addresses.  IPs are structured in a particular
+way for routing, so you can't even, say, pick your favorite four
+numbers and use that as a machine's IP address.   Similar to how you
+don't get to pick your house's address.
+
+We can see some additional, more subtle benefits by asking some more
+of our questions about naming schemes:
+
+a) Can a single name have multiple values?  Yes. DNS allows a hostname
+   to map to multiple IP addresses, which (as you'll see) allows a web
+   server to balance its load over multiple machines.  That is not
+   possible with only IP addresses.
+
+   Additionally, a single value can have multiple names; multiple
+   hostnames can map to the same machine.  This means one machine
+   could host multiple websites, even if the websites were logically
+   different; we don't need a separate physical machine for every
+   hostname we want to host.  (We could do this with just IP addresses
+   too, though)
+
+b) Can the value corresponding to a name change over time?  Yes.
+   Having a mapping between hostnames and IP addresses allows us to
+   change the physical machine that stores the data we want without
+   changing the hostname.
+
+----------------------------------------------------------------------
+DNS name bindings
+----------------------------------------------------------------------
+
+So we understand the first two parts of this naming scheme: the names
+and the values.  Now we need to figure out the third: the look-up
+algorithm.
+
+Let me give you a little bit of history.  The idea of binding
+hostnames to IP addresses has been around for awhile; even before DNS,
+when the Internet was small.  At that time, all machines just kept a
+text file (hosts.txt) that had a list of hostname/IP address
+pairs. The machine could do a table look-up to resolve the binding.
+Table look-ups are a common look-up algorithm for naming schemes.
+
+As the Internet grew, this method ran into some scalability issues
+(namely that it scales terribly).  So with DNS, we use a different
+method of storing our data (which will in turn require a different
+look-up algorithm).
+
+In DNS, there is no single table that stores all hostname/IP pairs.
+Instead, bindings are distributed across many different name servers.
+Now we have a new problem: how do we know which name server has a
+particular binding?
+
+This problem is solved by the structure of the names: names have a
+hierarchy that helps find the right name server.  Nodes in the
+hierarchy correspond to "zones", which map to name servers.  Each name
+server keeps a table of names in its zone.
+
+  So for instance, there is a name server at MIT, which keeps a table
+  of all the names in mit.edu.
+
+This is an example of a particular design pattern in naming schemes:
+design the namespace to help the look-up algorithm.
+
+Before we get to the look-up algorithm: where do the name bindings
+within a zone come from?  Each name server maintains its own mappings
+according to its own plan.  The root zone maintained by ICANN, a
+non-profit corp.  .com maintained by Verisign, which will add a new
+name to .com for money.  .mit.edu is maintained by MIT IS&T.
+
+----------------------------------------------------------------------
+Basic DNS look-up algorithm
+----------------------------------------------------------------------
+
+  Note: I have intentionally named this the "basic" look-up algorithm
+  because in a few paragraphs you'll see some enhancements that allow
+  us to skip a few steps.
+
+Now, how do we actually look up a name?  Let's suppose we're looking
+up web.mit.edu.  Conceptually, we'll just traverse the name hierarchy
+from the root: the root name server will tell us the edu name server,
+which will tell us the mit.edu name server, which will tell us the
+binding for web.mit.edu.
+
+In more detail, this look-up is done with a client/server
+organization.  A DNS client -- your laptop -- starts by contacting a
+root server for information about the name.  How does it know the
+address of the root server, in order to contact it?  DNS clients come
+pre-configured with the IP addresses of root servers.  There are only
+13 logical root nameservers; they're rarely changed because that would
+break clients.
+
+The response from the root server, in this basic look-up algorithm,
+will contain a delegation to another name server (one that is one
+level down in the tree).  Our client will then query this name
+server.  If it receives another delegation, it will query *that* name
+server, all the way down the tree until it gets an IP address.
+
+Lastly, context.  Names in DNS are global, or context-free:
+web.mit.edu means the same thing everywhere in DNS.  *Technically*,
+though, what I have just written is not a fully-qualified domain
+name.  The FQDN is web.mit.edu.  Many look-up systems will just add
+the dot for you.
+
+  Details: A hostname is a list of domain names concatenated with
+  dots.  The root domain is unnamed, and so is represented by a host
+  name that ends with a dot and the empty root domain label.
+
+Additionally, you can do a look-up on a name like "web".  Your system
+may try resolving this in a few ways:
+1. Resolving "web."
+2. Resolving "web" + an additional default context that you can
+   specify in a system parameter.  If the default context is mit.edu,
+   the client will try to resolve "web.mit.edu.".
+
+  Aside: The order in which your system tries these things, or whether
+  it tries these things, is system-specific.  And surprisingly varied
+  between systems; I got a lot of different results across a Mac and
+  two versions of Linux.
+
+----------------------------------------------------------------------
+Enhancements
+----------------------------------------------------------------------
+
+First, hidden from my description above is the fact that each zone can
+have multiple name servers; MIT, for instance, has three.  This means
+that a) when a DNS client receives a delegation, that delegation often
+contains a list of nameservers, not just one, and b) if one name
+server for a zone goes down, the others can be used.  So we're
+resilient to failure.
+
+Second, there are three important enhancements to DNS's look-up
+algorithm.  Combined, these enhancements make the system scalable and
+high-performing:
+
+1. The initial DNS request can go to any name server, not just the
+   root server.
+
+     Aside: Your machine has a setting somewhere that sets this.
+     Possibly /etc/resolv.conf, possibly elsewhere.
+
+2. Recursion: Some name servers allow recursive queries.  This means
+   that, if a client contacts that name server looking for a
+   particular hostname mapping, the name server itself will take care
+   of walking the tree, rather than sending the delegations back to
+   the client.
+
+These two alone -- particularly the second -- may seem like mere
+conveniences.
+
+  Aside: Frequently, a name server has a better network connection
+  than your laptop, so there is a bit of a performance enhancement in
+  having the name server do all the work.
+
+But wait until they're combined with the third:
+
+3. Caching: DNS clients and name servers keep a cache of all of the
+   names they have looked up.  So for instance, if you visit
+   web.mit.edu/about, and then click to web.mit.edu/admissions, your
+   browser will not do two separate look-ups; it already knows the
+   binding for web.mit.edu.
+
+   These bindings stay in the cache until they expire; the expiration
+   time is controlled by a time-to-live parameter in the response
+   itself.  E.g., MIT's IS&T sets the TTL for the web.mit.edu binding.
+   It is common for these bindings to be on the order of minutes, or
+   tens of minutes.  There's a trade-off between the ability to use
+   cached values (high TTLs) and the ability for authorities to update
+   mappings quickly (low TTLs).
+
+Now, to combine: Many machines at MIT use the MIT nameserver for their
+initial DNS query.  Assuming this nameserver offers recursive
+querying, that nameserver's cache will end up holding bindings for all
+of the names that machines at MIT ask it to resolve.  Resulting
+queries can reap the performance benefit of this large cache.
+
+  Example: You look up www.google.com via MIT's nameserver, which
+  resolves the binding and caches the result.  I, in a completely
+  different part of campus, do the same look-up a few seconds later,
+  and get my response quickly; it's in the nameserver's cache thanks
+  to your query.
+
+======================================================================
+DNS Design
+======================================================================
+
+There are *so many more* details about how DNS works, which you should
+read in your textbook (section 4.4).  I'm skipping them in this
+lecture in favor of a discussion of the bigger picture: why was DNS
+designed in this way?
+
+----------------------------------------------------------------------
+Hierarchy
+----------------------------------------------------------------------
+
+I'll say a bit first about the benefits of hierarchical design.  In
+general, hierarchies delegate responsibility.  In the context of DNS,
+this means that each zone is only responsible for a small portion of
+the total mappings.  Hierarchies also limit interaction between
+modules -- a good way to decrease complexity.
+
+Now for the good things about DNS specifically
+
+----------------------------------------------------------------------
+Good things
+----------------------------------------------------------------------
+
+1. It has global names (for fully-qualified names, assuming same root
+   servers).  So if I send you a hostname, you'll be able to look it
+   up too.
+
+     Aside: It should be clear the DNS has no trouble generating
+     *unique* names, and user-friendly names.  Those are big
+     considerations when designing a naming scheme.
+
+2. Scalable in terms of performance (we saw the contrast vs. hosts.txt
+   earlier).  This scalability comes from:
+   - Simplicity: Since the look-up process is fairly simple, servers
+     can answer many requests (which means they can handle large load,
+     which helps scalability)
+   - Caching
+   - Delegation: many name servers handle lookups (again, a benefit of
+     hierarchy)
+
+3. Scalable in terms of management.  Each zone makes its own policy
+   decisions about name bindings. (hierarchy is particularly great
+   here)
+
+4. Fault tolerant
+   - If one name server breaks, others will still work (client/server
+     separation)
+   - Multiple name servers can keep the table for a single zone (e.g.,
+     MIT has at least 3)
+
+----------------------------------------------------------------------
+Bad things
+----------------------------------------------------------------------
+
+All is not perfect, though.  There are some problems with this design:
+
+1. Policy.  Who should control the root zone, .com, etc?
+
+2. Significant load on root servers.  In many cases, every DNS client
+   starts by talking to one of the root server IPs.  So even though
+   DNS is a distributed system, there are still a few somewhat
+   centralized points.
+
+   Moreover, much of this load turns out to be queries for
+   non-existent names, as part of denial-of-service attacks on the
+   root name servers (another problem with having just a few root
+   servers that everyone uses).
+
+3. Security.  How does a client know if the data in the response is
+   correct?  If someone asks Verisign to change Amazon.com's name
+   servers, how does Verisign know whether to accept or reject the
+   request?
+
+Trustworthiness and resistance to attacks such as DoS attacks were
+*not* really design goals of the early Internet.
+
+----------------------------------------------------------------------
+Looking back
+----------------------------------------------------------------------
+
+Was DNS a successful design?  It's over 30 years old (designed in
+1983) and the basic design still works today after scaling by many
+orders of magnitude.  That is *not* something we see from many
+systems.
+
+One measure of success is that DNS has been used in many ways:
+- User-friendly names (can just type in www.google.com)
+- One web page can refer to a page on a different site (no need for
+  the web page to know the IP of the other site)
+- Load-balancing across many web servers (name server can return IP
+  address of one out of many web servers)
+- Choosing a nearby web server (name server maps google.com to a
+  server near the client)
+
+In general, IP addresses are rarely hard-coded, and DNS names are
+common.  This allows changing the hosting provider without
+re-configuring the system.
+
+DNS is even used for other kinds of name lookup (e.g., keeping a list
+of known spam senders, software version numbers, ...).  Content
+distribution networks -- systems such as Akamai, which distribute
+content such as streaming videos over the Internet -- also use DNS to
+do their distribution.
+
+======================================================================
+Summary
+======================================================================
+
+So what you've seen now is the following:
+
+- Modular designs are good because they reduce complexity.  A
+  client/server model is one way to enforce modularity.
+- Naming, which lets modules communicate, is pervasive in all of
+  systems.  Naming schemes have a lot in common, despite showing up in
+  different contexts and with lots of different details.  Modularity
+  is impossible without an ability to name.
+- DNS is a particular naming system, and also a client/server system,
+  which maps hostnames to IP addresses.  It's extremely scalable and
+  fault tolerant, and its distributed, hierarchical design also has
+  many benefits for policy.  Despite this, it has a few downsides,
+  such as security.
+
+This week in recitation, you will discuss DNS and will also talk about
+naming in file systems (specifically UNIX).  More-over, your first
+writing assignment is about DNS.
+
+In lecture, though, we're going to move away from these networked
+systems for a bit and concentrate on the following problem: how can we
+enforce modularity on a single machine?
+
+
+

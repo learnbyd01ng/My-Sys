@@ -1,0 +1,800 @@
+6.033 - Operating Systems: Threads
+Lecture 6
+Katrina LaCurts, lacurts@mit.edu
+(many ideas taken from Sam Madden's Spring 2014 notes)
+
+======================================================================
+Previous Lecture
+======================================================================
+
+We're currently on a quest to enforce modularity on a single machine
+(something that a client/server model does for us on multiple
+machines).  The entity that enforces modularity on a single machine is
+its operating system.  The primary technique that an operating system
+uses to enforce modularity is virtualization: the OS interposes
+between the program and the hardware, but provides the same interface.
+
+We saw that to enforce modularity on a single machine, we were going
+to have to deal with three problems:
+1. How to prevent programs from referring to each others' memory
+2. How to allow programs to communicate
+3. How to allow programs to share a single CPU such that one program
+   can't halt the progress of others
+
+We handled the first problem with virtual memory, and the second last
+week with bounded buffers.
+
+With bounded buffers came issues of concurrency, which were resolved
+with locks.  Locks allow us to create atomic actions, where a portion
+of code is executed by only a single CPU, all at once, without
+interruption.  We saw that locks are somewhat of a necessary evil:
+necessary, because without them abstractions such as a bounded buffer
+are impossible (and thus programs can't communicate), but evil because
+they are hard to use correctly due to races, deadlock, performance
+issues, and the occasional global-reasoning requirement.
+
+In all of this, we've seen that the kernel acts as a mediator: it
+protects user programs from each other, and itself from user
+programs.  The kernel is what sets up the page tables and handles page
+faults (and other interrupts), and what controls the bounded buffer.
+
+----------------------------------------------------------------------
+Our current assumptions
+----------------------------------------------------------------------
+
+We're down to two assumptions at this point:
+1. One CPU per program
+2. No faults in the OS
+
+Today we'll get rid of that first one, and allow more than one program
+per CPU.
+
+In this lecture, you'll see virtualization applied a third time: this
+time to processors (recall: last time to communication links between
+the client and server, the time before that to memory).  You will also
+see more issues with locks, and we'll even return to our bounded
+buffer implementation in an attempt to improve it.
+
+======================================================================
+Basic idea
+======================================================================
+
+First of all, let's recall why sharing a CPU is even a problem.
+
+Consider two programs trying to share a CPU.  Perhaps we imagine doing
+this by scheduling Program 1 first, letting it complete, and then
+scheduling Program 2.  But suppose Program 1 gets stuck in an infinite
+loop?  Now Program 2 can never run.
+
+So the big problem here is how do we prevent a single program -- even
+a correctly-working program from halting the progress of others?
+
+----------------------------------------------------------------------
+Using virtualization to encapsulate state
+----------------------------------------------------------------------
+
+Just like with virtual memory and bounded buffers, virtualization will
+come into play here: we will create a virtual processor, called a
+thread.  A thread will encapsulate state of a running program on a
+CPU.  To share a CPU between multiple threads, we will switch between
+threads by swapping state.
+
+  Aside: At this point, it probably sounds like each program runs as a
+  separate, single thread.  However, it's entirely possible for a
+  single program to use multiple threads ("multithreaded
+  programming").  Thus, it would be more correct for us to talk about
+  a thread encapsulating the state of a particular computation rather
+  than a particular program.
+
+When talking about switching threads, we use the terms suspend/resume:
+we suspend thread A to allow thread B to use the processor, and then
+resume thread A at some later point.
+
+Thus, our thread API is the following:
+- suspend(): save the state of a running program to memory (on a given
+             CPU)
+- resume(): restore the state from memory (on a given CPU)
+
+If we want to multiplex a single CPU between two programs, we could
+do:
+suspend(A)
+resume(B)
+suspend(B)
+resume(A)
+
+There are two immediate questions:
+
+1. What is a program's state?
+
+   A program's state is:
+   - The value of all of the registers, including the stack and the
+     program counter
+   - All of the program's memory (heap, stack, etc.), which is
+     captured by the page table register (which has the pointer to the
+     programs page table)
+
+2. When do we suspend/resume a thread?
+
+   The short answer is "periodically".  Ideally, we suspend a program
+   when it's busy waiting for something to happen.
+
+We're going to spend a lot of time on this second issue.  First of
+all, when is a program "waiting for something to happen"?  We actually
+saw an example of this in the last class.  Recall bounded-buffer
+send():
+
+  send(bb, message):
+    acquire(bb.lock)
+    while True:
+      if bb.in - bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+		release(bb.lock)
+        return
+
+If Thread A calls send() when the buffer is full, it's going to be
+spinning in the while loop until some other thread reads a message.
+This is an opportune time for the kernel to suspend Thread A and
+resume another (perhaps the thread that is waiting to call
+receive()!).
+
+But how does the kernel know that the thread is waiting for an event?
+It knows because our code is going to tell it:
+
+  send(bb, message):
+    acquire(bb.lock)
+    while True:
+      if bb.in - bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+		release(bb.lock)
+        return
+      release(bb.lock)
+      yield()
+      acquire(bb.lock)
+
+We've added three lines at the end, the most intriguing of which is
+"yield()".  yield() release the physical CPU from the current thread
+and gives it to another.  The call to yield() will return some time
+later (after one or more other threads have run).
+
+  Aside: It should also be clear from the last lecture why we've
+  released bb.lock before calling yield, and acquired it again
+  afterwards: we release it so that other threads can acquire it, and
+  acquire it after yield so that we can safely use the bounded buffer.
+
+We're going to study yield in depth, but just to quell any fears at
+this point: You may be thinking that, as I've described it, the only
+way for a thread to give up the CPU is for the thread itself to call
+yield.  A thread that never calls yield would then hog the processor.
+
+As I've described it, that is true.  But we'll add another mechanism
+at the end of class to handle this issue.
+
+======================================================================
+Yield
+======================================================================
+
+So back to yield.  Your textbook describes yield as "among the most
+mysterious [code] in an operating system."
+
+At a high-level, yield() code looks like the following:
+
+  yield():
+    // Suspend the running thread
+    // Choose a new thread to run
+    // Resume the new thread
+
+To properly implement these details, we need a few data structures:
+
+  Threads table: This table contains a list of all the current
+  threads and some information about them
+
+  CPUs table: This table contains a list of all CPUs and the ID of the
+  thread currently running on them.
+
+  t_lock: This is the lock we'll use to make concurrent suspend/resume
+  operations atomic.
+
+We certainly want these three steps to happen as an atomic action.
+So:
+
+  yield():
+    acquire(t_lock)
+    // Suspend the running thread
+    // Choose a new thread to run
+    // Resume the new thread
+    release(t_lock)
+
+----------------------------------------------------------------------
+Suspending the current thread
+----------------------------------------------------------------------
+
+Suspending the running thread involves saving the current thread's
+state.  The state, recall, is all of the registers + stack + program
+counter + memory.  We can save a thread's state by saving two things:
+the stack pointer and the page-table register.
+
+- Why no additional memory?  Because that is all taken care of by
+  virtual memory.
+- Why no additional registers?  Any additional registers a thread is
+  using will be stored on the stack, so saving the stack-pointer takes
+  care of that.
+- Why no program-counter?  Great question.  We'll assume that the
+  calling function explicitly pushes that to the stack too (and so
+  it's captured by the stack pointer).  However, if you don't like
+  that design, then pretend we're saving the stack pointer, the page
+  table register, *and* the program counter; such a design would also
+  work.
+
+  Incidentally, a design where we pushed both the PC and page-table
+  register onto the stack, and just saved the stack pointer, would
+  also be fine.  I've chosen our current design because I feel it's
+  the best for teaching purposes; once you understand it, it will be
+  clear how you'd make the other two designs work.
+
+Thus, the information for each thread in the page table is a thread
+ID, their stack pointer, and their page table register.  Additionally,
+we'll store a bit that indicates whether or not they're running.
+
+So, now:
+
+  yield():
+    acquire(t_lock)
+
+    // Suspend current thread
+    id = id of current thread
+    threads[id].state = RUNNABLE
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    // Resume the new thread
+    release(t_lock)
+
+How do we get the ID of the current thread?  We'll have a per-CPU
+register -- call it CPU -- that contains the current CPU number, and
+use the CPUs table, which tells us the thread running on each CPU.
+
+  yield():
+    acquire(t_lock)
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].state = RUNNABLE
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    // Resume the new thread
+
+    release(t_lock)
+
+  Aside: RUNNABLE means that this thread can be executed, but is not
+  currently being executed.
+
+----------------------------------------------------------------------
+Choosing a new thread
+----------------------------------------------------------------------
+
+To choose a new thread, we'll adopt a simple strategy: look through
+the threads array for a RUNNABLE thread.  Skip any that are already
+RUNNING (either on this CPU or on others -- this is why we need the
+RUNNING/RUNNABLE bit).
+
+  yield():
+    acquire(t_lock)
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].state = RUNNABLE
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    do:
+       id = (id + 1) mod N
+    while threads[id].state != RUNNABLE
+
+    // Resume the new thread
+
+    release(t_lock)
+
+Notice that we've really done nothing fancy there.  We're just cycling
+through until we find a RUNNABLE thread.
+
+If no other threads are RUNNABLE, we'd end up coming back to the
+current thread thanks to the modulus, so this loop is guaranteed to
+terminate.
+
+----------------------------------------------------------------------
+Resuming the new thread
+----------------------------------------------------------------------
+
+Resuming the new thread is just the reverse of suspending the original
+one:
+
+  yield():
+    acquire(t_lock)
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].state = RUNNABLE
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    do:
+       id = (id + 1) mod N
+    while threads[id].state != RUNNABLE
+
+    // Resume the new thread
+    SP = threads[id].sp
+    threads[id].state = RUNNING
+    PTR = threads[id].ptr
+    cpus[CPU].thread = id
+
+    release(t_lock)
+
+----------------------------------------------------------------------
+Did this really work?
+----------------------------------------------------------------------
+
+A completely valid question at this point: Is that it?  How did just
+setting those variables cause yield() to return to a different thread?
+
+Let's suppose P1 calls send(), finds the buffer full, and yields to
+P2.
+
+P1's stack looks like
+
+  bb  # bounded buffer
+  m   # send args (the message)
+  ... # saved registers, etc.
+  return addr into send <-- top of stack
+
+(Remember, stacks grow down: the "top" of the stack is the bottom
+ entry, visually)
+
+P2's stack looks like
+
+  ... # saved vars
+  return addr into somewhere <-- top of stack
+
+As part of resuming the new thread, yield changes the stack pointer
+(SP).  So when we set SP to P2's stack pointer, the return address
+that will be popped off is for wherever P2 last yielded from.
+
+Similarly, if P2 yields back to P1, yield will set SP to P1's stack
+pointer, and return will go back to send().
+
+Thus, setting SP is effectively the point at which we have switched
+threads.  The code after the SP switch is really finishing up a
+previous yield (in our example, swapping P2's state back in).
+
+Just to bring this full circle, now that the code is filled in, you
+can see that t_lock is specifically allowing us to:
+- atomically set thread[].state and thread[].sp
+- atomically find a RUNNABLE thread and mark it RUNNING
+
+======================================================================
+Condition variables
+======================================================================
+
+Back to send():
+
+  send(bb, message):
+    acquire(bb.lock)
+    while True:
+      if bb.in - bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+		release(bb.lock)
+        return
+      release(bb.lock)
+      yield()
+      acquire(bb.lock)
+
+Now we know pretty much everything that's going on here.  But this
+code, despite giving us the ability to suspend the thread while it
+waits, is really inelegant!  There is a lot of checking, and lot of
+re-acquiring locks (which can get expensive).
+
+Wouldn't it be better if the sender (receiver) just got woken up when
+the buffer had space (a message in it)?
+
+*Yes.*  It would be better.  And, lucky for us, most OSes provide an
+ abstraction for this: condition variables.  A condition variable
+ names a condition that a thread can wait for.  The API:
+
+  wait(cv) - When a thread calls wait, it goes to sleep (yielding its
+  processor).  The thread will wake up when it's notified for the
+  event captured by cv.
+
+  notify(cv) - wakes up any threads waiting on the event captured by
+  cv
+
+[Note to students: If you're using these notes for studying, please
+keep reading -- this is *not* the version of wait() that we're going
+to end up using ]
+
+----------------------------------------------------------------------
+send() with condition variables
+----------------------------------------------------------------------
+
+With condition variables, our send code might become:
+
+  send(bb, message):
+    acquire(bb.lock)
+    while True:
+      if bb.in - bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+		release(bb.lock)
+        notify(bb.not_empty)
+        return
+      release(bb.lock)
+      wait(bb.not_full)
+      acquire(bb.lock)
+
+When a thread puts a message in the buffer, it notifies of the event
+"not empty".  Threads in release (code not shown) will be waiting for
+such an event.  Threads in send (shown above) wait for the event "not
+full", i.e., they wait to be notified that there is room in the
+buffer.  The release code will notify them of that event.
+
+Given this change, why do we still need a while loop in the code?
+When notify() is called, it wakes all of the threads waiting on the
+event up.  The threads can't assume there is space after they're
+notified.
+
+  Example: Imagine threads T1 and T2 are waiting.  They're both
+  notified of the bb.not_full event, and wake up.  T1 acquires the
+  lock first, adds a message to the buffer, which happens to fill it
+  up.  When T2 finally acquires the lock -- after T1 releases it --
+  there will no longer be space in the buffer.
+
+  Aside: Other possible of implementations of wait/notify are
+  possible.  For example, one where notify just notifies one waiting
+  thread.  The problem with this implementation is that the waiting
+  thread might no longer want to "use" the notify (in this example,
+  might not want to write to a slot in the buffer any more).
+
+What happens if send() notifies but no one is waiting?  That's okay.
+A later receiver will not wait if there is space (i.e., in > out).
+
+----------------------------------------------------------------------
+The "lost notify" problem
+----------------------------------------------------------------------
+
+Just like pretty much every time I present you with code in 6.033,
+there is a problem with what we just wrote.
+
+Imagine two threads: T1, which is sending, and T2, which is receiving.
+Let's say the buffer is currently full.  T1 currently has the lock on
+the buffer.
+
+T1, finding the buffer full, releases bb.lock.  Right after that,
+before T1 calls wait(), T2 acquires the lock.  It reads a message, and
+notifies waiting threads of bb.not_full.
+
+At this point, what threads are waiting on bb.not_full?  None of
+them!  Specifically, T1 is *not yet waiting* for bb.not_full; it got
+interrupted before it could call wait(bb.not_full).
+
+In some sense, calling wait(bb.not_full) registers a thread to be
+notified of an event.  T1 did not get a chance to register itself
+before this event before the event happened.
+
+----------------------------------------------------------------------
+wait() take two
+----------------------------------------------------------------------
+
+We solve this problem by passing a lock argument into wait() so that
+it can release the lock at the appropriate time.  This means our
+wait() API is really:
+
+  wait(cv, lock) - When a thread calls wait, it goes to sleep
+  (yielding its processor), and releases lock.  The thread will wake
+  up when it's notified for the event captured by cv and re-acquire
+  the lock.
+
+In practice, we associate a condition variable with a lock that
+protects a concurrent data structure.
+
+Our send() code becomes:
+
+  send(bb, message):
+    acquire(bb.lock)
+    while True:
+      if bb.in - bb.out < N:
+        bb.buf[bb.in mod N] <- message
+        bb.in <- bb.in + 1
+		release(bb.lock)
+        notify(bb.not_empty)
+        return
+      wait(bb.not_full, bb.lock)
+
+We could try two other ideas too, but neither will work:
+1. Not using a lock at all.  We'd experience the same "lost notify"
+   problem.
+2. Holding the lock through wait.  This is a bad idea, because the
+   notifier (the receiving thread) needs to acquire the lock to update
+   bb.
+
+----------------------------------------------------------------------
+wait() implementation
+----------------------------------------------------------------------
+
+Now that you know the correct version of wait, let's see how it's
+implemented.  After all, until you see the implementation, you can't
+really believe that wait() correctly protects against the lost notify
+problem.
+
+  wait(cv, lock):
+    acquire(t_lock)
+    release(lock)
+    threads[id].cv = cv
+    threads[id].state = WAITING
+    yield_wait() # will be a little different than yield()
+    release(t_lock)
+    acquire(lock)
+
+Thanks to t_lock, wait() atomically releases the lock and sets itself
+as ready to receive a notify.  To do this, we've added two things: a
+condition variable field to each thread in the thread table
+(threads[id].cv) and a new state (WAITING).  We've also used
+yield_wait() instead of yield(), which we'll get to in a second.
+
+  Aside: You could correctly implement wait without acquiring the lock
+  at the end, and instead doing that in the send() code itself.  We've
+  placed it in wait() for symmetry, not correctness.
+
+So how does this avoid the lost notify problem?  Now, either the
+notify will complete before the sender checks (in which case the
+sender will find space), or the sender waits before the notifier runs
+(in which case the sender will receive the notify).
+
+This is an example of "before or after atomicity": A before B, or B
+before A, but not interleaved.
+
+Just for completeness, here is the code for notify.  It iterates over
+the threads, changes any thread waiting on this particular condition
+variable to RUNNABLE.
+
+  notify(cv):
+    acquire(t_lock)
+	for i = 0 to N-1:
+      if threads[i].cv == cv && threads[i].state == WAITING:
+        threads[i].state = RUNNABLE
+    release(t_lock)
+
+The most important thing to get from this code is that notify() is the
+function that sets a thread's state to RUNNABLE.  That will become
+very important in a moment.
+
+======================================================================
+Yield_wait
+======================================================================
+
+The one missing component of this is yield_wait().  Why didn't we just
+use yield()?  Well, recall our yield() code:
+
+  yield():
+    acquire(t_lock)
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].state = RUNNABLE
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    do:
+       id = (id + 1) mod N
+    while threads[id].state != RUNNABLE
+
+    // Resume the new thread
+    SP = threads[id].sp
+    threads[id].state = RUNNING
+    PTR = threads[id].ptr
+    cpus[CPU].thread = id
+
+    release(t_lock)
+
+wait() currently holds t_lock, so yield() isn't going to be able to
+run.  That seems easy enough to fix; let's just delete that code from
+yield_wait():
+
+  yield_wait():
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].state = RUNNABLE
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    do:
+       id = (id + 1) mod N
+    while threads[id].state != RUNNABLE
+
+    // Resume the new thread
+    SP = threads[id].sp
+    threads[id].state = RUNNING
+    PTR = threads[id].ptr
+    cpus[CPU].thread = id
+
+We'll also delete the code that changes the current thread's state to
+RUNNABLE, since its correct state is WAITING, and wait() took care of
+that state change for us.
+
+  yield_wait():
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    do:
+       id = (id + 1) mod N
+    while threads[id].state != RUNNABLE
+
+    // Resume the new thread
+    SP = threads[id].sp
+    threads[id].state = RUNNING
+    PTR = threads[id].ptr
+    cpus[CPU].thread = id
+
+And, of course, we have a new problem: what if no thread is RUNNABLE?
+The loop in the middle will spin forever.
+
+  Remember that we avoided this problem in yield(), because the
+  original thread was set to RUNNABLE.  If no other thread was
+  RUNNABLE, we'd just come back to the original thread and resume it.
+
+This is particularly bad, because yield_wait() is looping forever
+*while wait() holds t_lock* (remember: yield_wait() is called by
+wait()).  Other CPUs can't acquire t_lock, and so can't do a notify!
+This is another example of deadlock.
+
+To solve this, we need to release t_lock in the middle of
+yield_wait(), to allow other CPUs to notify:
+
+  yield_wait():
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+
+    // Choose a new thread to run
+    do:
+       id = (id + 1) mod N
+       release(t_lock)
+       acquire(t_lock)
+    while threads[id].state != RUNNABLE
+
+    // Resume the new thread
+    SP = threads[id].sp
+    threads[id].state = RUNNING
+    PTR = threads[id].ptr
+    cpus[CPU].thread = id
+
+But!  Of course!  A new problem!
+
+SP currently points to the original thread's stack -- call it thread
+A.  Between release and acquire, another CPU could run thread A.  This
+means that two CPUs will have their stack pointer pointing to thread
+A's stack.  This is a very easy way for A's stack to get corrupted.
+
+The fix is to allocate a separate stack for use inside of
+yield_wait(), for each CPU.  We'll switch to this special stack before
+releasing t_lock.
+
+  yield_wait():
+
+    // Suspend current thread
+    id = cpus[CPU].thread
+    threads[id].sp = SP
+    threads[id].ptr = PTR
+    SP = cpus[CPU].stack
+
+    // Choose a new thread to run
+    do:
+       id = (id + 1) mod N
+       release(t_lock)
+       acquire(t_lock)
+    while threads[id].state != RUNNABLE
+
+    // Resume the new thread
+    SP = threads[id].sp
+    threads[id].state = RUNNING
+    PTR = threads[id].ptr
+    cpus[CPU].thread = id
+
+======================================================================
+Preemption
+======================================================================
+
+So we've finally figured out yielding, waiting, and notifying.  But:
+what if a thread never calls yield (or wait)?  So far, it looks like
+that thread will get to run forever, thus defeating the entire purpose
+of this lecture: to prevent a single thread from hogging the
+processor.
+
+The solution is preemption.  We will use special hardware (a "timer")
+to periodically generate an interrupt.  The interrupt handler will
+forcibly call yield().
+
+The timer interrupt looks like:
+
+  push PC        # done by CPU
+  push registers # this is not a function call; can't assume compiler
+                 # saves registers
+  yield()
+  pop registers
+  pop PC
+
+Just like before, yield() switches stacks, and the interrupt returns
+to another thread.  We save the registers, because the interrupt might
+not be at a function boundary (but we can save them on the stack and
+just switch stacks as before).
+
+AND OF COURSE there is a problem: what if a timer interrupt occurs
+while the CPU is running yield() or yield_wait()?  Since
+yield()/yield_wait() hold t_lock, when the timer tries to call
+yield(), acquire(t_lock) will hang forever.
+
+The solution is a hardware mechanism to disable interrupts.  We
+disable interrupts before acquiring t_lock, and re-enable them after
+releasing it.
+
+======================================================================
+Summary
+======================================================================
+
+Today, we completed our three-part quest to enforce modularity on a
+single machine by virtualizing the processor.  Threads are the entity
+that virtualizes the processor and allows more than one program to use
+a single CPU.
+
+To get threads to work, we need the notion of yield(), which
+illuminated all sorts of subtle issues for us.  wait(), notify(), and
+condition variables provided some better designs, where threads don't
+have to repeatedly check for certain states themselves.  This design
+required some changes to yield() to avoid deadlock.
+
+An operating system uses preemption to force threads to yield(), in
+the event that the code contains no calls to yield().  Preemption is
+implemented with a hardware interrupt.
+
+----------------------------------------------------------------------
+A reflection
+----------------------------------------------------------------------
+
+Locks and threads are interesting from a design point of view.  On the
+one hand, we needed locks to get our bounded buffer to work, and
+threads to share a processor (threads, of course, required more
+locks).  But these entities bring up some modularity issues: we had to
+reason somewhat globally about locks (e.g., consider our problems with
+t_lock).  This isn't great.
+
+One way to bring back modularity to threads is to use layering (which
+effectively gives us a more modular way to organize all our different
+threads).  You can read about this in 5.5.6 in your book, but there
+are still subtle issues to contend with.
+
+Throughout these past three lectures, you should've noticed a theme:
+to truly enforce modularity, we need kernel and/or hardware support.
+For virtual memory, we added a new piece of hardware -- the MMU -- and
+used the kernel to set up the pages tables/handle page faults.  For
+bounded buffers and locks, we needed the kernel to handle the bounded
+buffer and a hardware-enforced atomic operation (XCHG) to implement
+locks.  For threads, we needed the kernel to manage the threads, and
+hardware interrupts to do preemptive scheduling.
+
+At this point, we've successfully enforced modularity on a single
+machine.  But, all along, we've made an implicit assumption that the
+kernel itself is correct.  Wednesday, we'll deal with that problem.

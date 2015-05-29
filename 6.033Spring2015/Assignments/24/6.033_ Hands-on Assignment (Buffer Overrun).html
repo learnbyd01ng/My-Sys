@@ -1,0 +1,494 @@
+
+<!-- saved from url=(0059)http://web.mit.edu/6.033/www/assignments/handson-stack.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><title>6.033: Hands-on Assignment (Buffer Overrun)</title><style type="text/css"></style></head><body bgcolor="White" text="Black">
+
+<a name="top">
+<h4>
+<em>
+<p align="center">
+M.I.T. DEPARTMENT OF EECS
+</p>
+</em>
+</h4>
+</a>
+<!-- RULE: h-header -->
+
+<table width="100%">
+<tbody><tr>
+<td align="left"><strong>6.033 - Computer System Engineering</strong>
+</td><td align="right"><strong>Buffer Overrun Hands-On Assignment</strong>
+</td></tr></tbody></table>
+
+<hr>
+
+<h2>Hands-on 10: Buffer Overrun</h2>
+
+<p>
+Complete the following hands-on assignment.  Do the activities
+described, and submit your solutions using the <a href="https://6033.scripts.mit.edu:444/submit.cgi/">online submission site</a>
+by 11:59p.
+</p>
+
+<p>
+Before attempting this hands-on, you should read
+<a href="http://web.mit.edu/6.033/www/assignments/rec-stack.shtml">Beyond Stack Smashing:
+Recent Advances in Exploiting Buffer Overruns</a>,
+which is also assigned for this recitation.
+</p>
+
+<p>
+You should perform this hands-on using a Linux-based machine
+(<code>athena.dialup.mit.edu</code> is okay).
+If you have trouble on a 64-bit Ubuntu system, installing <kbd>libc6-dev-i386</kbd> may help.
+</p>
+
+<h4>I. Warmup</h4>
+
+<p>
+Open two terminal windows: a <em>top</em> window for running
+a web server, and a <em>bottom</em> window for exploiting that web server.
+</p>
+
+<p>
+In the <em>top</em> window,
+download and decompress <a href="http://web.mit.edu/6.033/www/assignments/stack.tgz">stack.tgz</a>.
+</p><pre>  top% <font color="green">wget http://web.mit.edu/6.033/www/assignments/stack.tgz</font>
+  top% <font color="green">tar xf stack.tgz</font>
+  top% <font color="green">cd stack</font>
+  top% <font color="green">make</font>
+  gcc -m32 -g -std=c99 -fno-stack-protector -Wall -D_GNU_SOURCE   -c -o httpd.o httpd.c
+  gcc -m32 -z execstack httpd.o -o httpd-ex
+  gcc -m32 httpd.o -o httpd-nx
+  gcc -m32   -c -o shellcode.o shellcode.S
+  objcopy -S -O binary -j .text shellcode.o shellcode.bin
+  top%
+</pre>
+You should get two web server binaries,
+<code>httpd-ex</code> and <code>httpd-nx</code>,
+and two incomplete exploit scripts,
+<code>exploit-ex.py</code> and <code>exploit-nx.py</code>.
+We will provide instructions to help you complete these exploit scripts.
+<p></p>
+
+<p>
+Start the <code>httpd-ex</code> web server in the <em>top</em> window.
+</p><pre>  top% <font color="green">./run.sh setarch i386 -R ./httpd-ex</font>
+  Web server running at <font color="red">all-night-tool.mit.edu:4000</font>
+</pre>
+Your web server may print a different address other than
+<code>all-night-tool.mit.edu:4000</code>.
+In that case,
+replace all occurrences of
+<code>all-night-tool.mit.edu:4000</code> with that printed address
+for the rest of this hands-on.
+<p></p>
+
+<p>
+To test the web server,
+open a web browser and type the URL
+<code>http://all-night-tool.mit.edu:4000/</code>
+in the address bar.
+If the web server is running,
+you should see a “Grades” web page.
+You can stop the web server at any time by pressing Ctrl+C in the
+top window.
+</p>
+
+<p>
+Again, if you saw a different web server address printed in the top window,
+use that address in the browser.
+Note that the address (especially the port number like 4000) may change
+every time you start the web server.
+</p>
+
+<p>
+You can also view the web page via a command-line program called
+<code>curl</code>.
+Keep the web server running in the top window.
+Run the following command in the <em>bottom</em> window.
+</p><pre>  bottom% <font color="green">curl http://all-night-tool.mit.edu:4000/app.py</font>
+  &lt;h1&gt;Grades&lt;/h1&gt;
+  &lt;pre&gt;
+  Ben Bitdiddle    F
+  Alice Jones      A
+  &lt;/pre&gt;
+</pre>
+<p></p>
+
+<p>The web server and clients (e.g., your browser and <code>curl</code>)
+communicate using the HTTP protocol.
+Here is a
+<a href="http://www.garshol.priv.no/download/text/http-tut.html">tutorial
+of the HTTP protocol</a>.
+If you want to observe the details of HTTP requests and responses,
+add <code>-v</code> to <code>curl</code>.
+</p><pre>  bottom% <font color="green">curl -v http://all-night-tool.mit.edu:4000/app.py</font>
+  * About to connect() to all-night-tool.mit.edu port 4000 (#0)
+  *   Trying 18.9.64.12... connected
+  &gt; GET /app.py HTTP/1.1
+  &gt; User-Agent: curl/7.22.0 ...
+  &gt; Host: all-night-tool.mit.edu:4000
+  &gt; Accept: */*
+  &gt;
+  * HTTP 1.0, assume close after body
+  &lt; HTTP/1.0 200 OK
+  &lt; Content-Type: text/html
+  &lt;
+  &lt;h1&gt;Grades&lt;/h1&gt;
+  &lt;pre&gt;
+  Ben Bitdiddle    F
+  Alice Jones      A
+  &lt;/pre&gt;
+  * Closing connection #0
+</pre>
+<p></p>
+
+<p>
+Ben Bitdiddle is unhappy with the grades.
+He discovers that the content of the “Grades” web page is
+loaded from a file named <code>grades.txt</code> on the TA's web server.
+Ben then decides to remove this <code>grades.txt</code> file.
+Since he doesn't have write access to the TA's web server,
+Ben tries to send malicious HTTP requests over the network,
+which will trick the web server into removing that file.
+Your goal is to “help” Ben in this hands-on.
+</p>
+
+<h4>II. Stack Smashing</h4>
+
+<p>
+Ben's TA first runs the <code>httpd-ex</code> web server.
+The <code>httpd-ex</code> binary has an executable stack,
+which makes it easier to inject executable code into the web server.
+The goal of the injected code is to remove <code>grades.txt</code> on the server.
+</p>
+
+<p>Start the <code>httpd-ex</code> web server in the <em>top</em> window
+and keep it running there.
+</p><pre>  top% <font color="green">./run.sh setarch i386 -R ./httpd-ex</font>
+  Web server running at all-night-tool.mit.edu:4000
+</pre>
+Here <code>run.sh</code> creates a <code>grades.txt</code> file
+every time it starts.
+<p></p>
+
+<p>
+We have provided a modified version of Aleph One's shell code in
+<code>shellcode.S</code> for injection.
+View <code>shellcode.S</code> in an editor.
+</p>
+
+<p><strong>Question 1:</strong>
+What system call(s) does <code>shellcode.S</code> invoke to remove the
+<code>grades.txt</code> file?
+</p>
+
+<p>
+When you run <code>make</code> earlier,
+<code>make</code> produces <code>shellcode.bin</code>,
+a compiled version of the shell code.
+We will use <code>exploit-ex.py</code> to inject <code>shellcode.bin</code>
+into the web server using a malicious HTTP request.
+</p>
+
+<p>
+The script <code>exploit-ex.py</code> sends malicious HTTP requests
+to the web server and
+exploits buffer overruns in the function <code>process_client</code>
+(<code>httpd.c:158</code>) in <code>httpd-ex</code>.
+When executing this function, the stack looks like follows:
+</p><pre>                     +------------------+
+                     |       ...        |
+                     +------------------+
+                     |  return address  | (4 bytes)
+                     +------------------+
+         ebp ------&gt; |    saved %ebp    | (4 bytes)
+                     +------------------+
+                     |       ...        |
+                     +------------------+
+                     |   reqpath[255]   |
+                     |       ...        |
+     reqpath ------&gt; |    reqpath[0]    |
+                     +------------------+
+</pre>
+Normally, before calling the function <code>process_client</code>,
+the return address is pushed onto the stack (right above <code>ebp</code>).
+The local variables of <code>process_client</code> (such as
+<code>reqpath</code> defined at <code>httpd.c:162</code>) are below
+<code>ebp</code>.
+When the function exits,
+the control flow jumps to the return address saved on the stack.
+<p></p>
+
+<p>
+Unfortunately, the web server doesn't check the length when filling
+up the buffer <code>reqpath</code> with a user-provided URL.
+In other words, Ben can use a very long URL to trick the web server
+into writing memory beyond <code>reqpath</code>.
+</p>
+
+<p>
+Basically, the code injection in <code>exploit-ex.py</code>
+consists of three parts:
+</p><ol>
+<li>inject the shell code into the buffer
+<code>reqpath</code>, from bottom to top;</li>
+<li>continue to fill up the memory with “x”s from bottom to top,
+until past <code>ebp</code>;</li>
+<li>overwrite the return address with the address of
+<code>reqpath</code>.</li>
+</ol>
+In doing so, when the function <code>process_client</code> returns,
+the control flow is hijacked to execute the injected code in
+<code>reqpath</code>.
+<p></p>
+
+<p>
+To make the exploit work, you need the values of <code>reqpath</code> and <code>ebp</code>.
+To get these values,
+either visit the web server using your browser,
+or run <code>curl</code> in the <em>bottom</em> window.
+</p><pre>  bottom% <font color="green">curl http://all-night-tool.mit.edu:4000/app.py</font>
+</pre>
+You should find the values of <code>reqpath</code> and <code>ebp</code>
+printed in the <em>top</em> window.
+<p></p>
+
+<p>
+Complete <code>exploit-ex.py</code> and fill in the values of
+<code>reqpath</code> and <code>ebp</code> (marked as “FIXME”).
+After that, run the exploit in the <em>bottom</em> window.
+</p><pre>  bottom% <font color="green">./exploit-ex.py all-night-tool.mit.edu:4000</font>
+  HTTP request:
+  GET <font color="red">%EB%1B%5E%89...grades.txtxxx...xxx%XX%YY%ZZ%WW</font> HTTP/1.0
+
+
+  Connecting to all-night-tool.mit.edu:4000...
+  Connected, sending request...
+  Request sent, waiting for reply...
+  Received reply.
+  HTTP response:
+  ...
+  bottom%
+</pre>
+<p></p>
+
+<p>
+You should find a long string in the GET line (i.e., the second line in
+the output), in the form <code>GET <i>long-string</i> HTTP/1.0</code>.
+This long string is a malicious URL you crafted to help Ben remove
+<code>grades.txt</code>.
+Write down this malicious URL for answering the next question.
+</p>
+
+<p>
+Now verify that <code>grades.txt</code> has been successfully removed,
+using <code>ls</code> or <code>cat</code> you practiced in the
+<a href="http://web.mit.edu/6.033/www/assignments/handson-unix.html">UNIX hands-on</a>.
+You can also refresh your browser or re-run <code>curl</code> in the
+<em>bottom</em> window.
+This time you should see an error message.
+</p><pre>  bottom% <font color="green">curl http://all-night-tool.mit.edu:4000/app.py</font>
+  ...
+  IOError: [Errno 2] No such file or directory: 'grades.txt'
+  ...
+</pre>
+<p></p>
+
+
+<p></p>
+
+<p><strong>Question 2:</strong>
+Explain the malicious URL you wrote down earlier.
+The URL consists of three parts:
+the first part starts with <code>%EB%1B%5E%89</code> and ends with
+<code>grades.txt</code>;
+the second part is a list of "x"s,
+after which you should see the third part in the form <code>%XX%YY%ZZ%WW</code>.
+Where does each part come from?
+</p>
+
+<h4>III. Arc Injection</h4>
+
+<p>
+Ben's TA notices this attack and upgrades the web server to use <code>httpd-nx</code>,
+the stack of which is <em>not</em> executable anymore.
+Press Ctrl+C in the <em>top</em> window to stop any running web server,
+and start the new <code>httpd-nx</code> web server.
+</p><pre>  top% <font color="green">./run.sh setarch i386 -R ./httpd-nx</font>
+  Web server running at all-night-tool.mit.edu:4000
+</pre>
+<p></p>
+
+<p><strong>Question 3:</strong>
+Save a copy of your <code>exploit-ex.py</code>.
+If <code>http-nx</code> prints different values of <code>reqpath</code>
+and <code>ebp</code>,
+update <code>exploit-ex.py</code> with the new values.
+Run <code>exploit-ex.py</code> in the <em>bottom</em> window.
+Is your exploit script able to remove <code>grades.txt</code>
+this time?  Why or why not?
+</p>
+
+<p>
+As the TA deploys <code>httpd-nx</code>,
+Ben tries to implement a new exploit method called arc injection
+(also known as <a href="http://en.wikipedia.org/wiki/Return-to-libc_attack">return-to-libc</a>)
+in <code>exploit-nx.py</code>.
+This exploit script requires <em>no</em> shell code.
+The basic idea is to hijack the return address to execute an
+<em>existing</em> function to remove <code>grades.txt</code>,
+such as <code>unlink</code>.
+</p>
+
+<p>
+Ben hasn't completed the exploit script <code>exploit-nx.py</code>.
+In addition to <code>reqpath</code> and <code>ebp</code>,
+the exploit also needs the address of the <code>unlink</code> function.
+Help Ben fill in the three values marked as
+“FIXME” in <code>exploit-nx.py</code>.
+You can observe these values from the output of <code>httpd-nx</code> in the
+<em>top</em> window, either using your browser or by running
+<code>curl</code> in the <em>bottom</em> window.
+</p><pre>  bottom% <font color="green">curl http://all-night-tool.mit.edu:4000/app.py</font>
+</pre>
+After completing <code>exploit-nx.py</code>, run it in the <em>bottom</em> window.
+<pre>  bottom% <font color="green">./exploit-nx.py all-night-tool.mit.edu:4000</font>
+</pre>
+Verify that this exploit has successfully removed <code>grades.txt</code>.
+<p></p>
+
+<p><strong>Question 4:</strong>
+Ben runs <code>exploit-nx.py</code> you wrote to
+trick <code>httpd-nx</code> into removing <code>grades.txt</code>.
+When executing the function <code>process_client</code>
+(<code>httpd.c:158</code>) in <code>httpd-nx</code>,
+the stack is shown as the following diagram.
+What are the values at the return address and P
+after a successful exploit?
+Hint: you can find these values in <code>exploit-nx.py</code>.
+</p><pre>                     +------------------+
+                     |       ...        |
+                     +------------------+
+                     |     fname[9]     |
+                     |       ...        |
+                     |     fname[0]     |
+                     +------------------+
+                     |        P         | (4 bytes)
+                     +------------------+
+        beef ------&gt; |    0xdeadbeef    | (4 bytes)
+                     +------------------+
+                     |  return address  | (4 bytes)
+                     +------------------+
+         ebp ------&gt; |    saved %ebp    | (4 bytes)
+                     +------------------+
+                     |       ...        |
+                     +------------------+
+                     |   reqpath[255]   |
+                     |       ...        |
+     reqpath ------&gt; |    reqpath[0]    |
+                     +------------------+
+</pre>
+<p></p>
+
+<h4>IV. Beyond Stack</h4>
+
+<p>
+Linux, as well as many other operating systems, employs
+<a href="http://en.wikipedia.org/wiki/Address_space_layout_randomization">address space layout randomization</a> (ASLR)
+to enhance security.  To observe ASLR,
+start the web server <em>without</em> <code>setarch</code>.
+</p><pre>  top% <font color="green">./run.sh ./httpd-nx</font>
+  Web server running at all-night-tool.mit.edu:4000
+
+  bottom% <font color="green">curl http://all-night-tool.mit.edu:4000/app.py</font>
+</pre>
+Press Ctrl+C in the top window to stop the web server.
+Write down the values of <code>reqpath</code> and <code>ebp</code>
+shown in the top window.
+Now repeat the above commands in both windows:
+restart the web server in the top window,
+and re-run <code>curl</code> in the bottom window.
+<p></p>
+
+<p><strong>Question 5:</strong>
+Do the values of <code>reqpath</code> and <code>ebp</code> change
+in the top window after restarting the web server?
+Does the difference “<code>ebp</code> - <code>reqpath</code>” change?
+If you observe any changes, do you think these changes make your exploit
+harder to succeed or not?  Why?
+</p>
+
+<p>
+The web server has other vulnerabilities.
+For example, the <code>/etc/passwd</code> file often contains sensitive
+user information and should not be exposed to the network.
+However, with a running <code>httpd-nx</code> web server,
+Ben can access that file remotely using a crafted URL.
+</p><pre>  top% <font color="green">./run.sh ./httpd-nx</font>
+  Web server running at all-night-tool.mit.edu:4000
+
+  bottom% <font color="green">curl http://all-night-tool.mit.edu:4000/[MAGIC-PATH]/etc/passwd</font>
+</pre>
+<p></p>
+
+<p><strong>Question 6:</strong>
+Fill in the <code>MAGIC-PATH</code> part and complete the URL for
+retrieving the server's <code>/etc/passwd</code> using <code>curl</code>.
+Can you use the same URL in your browser to access that file?
+Hint: if you're working on the athena cluster or using a somewhat newer
+version of curl (&gt;= v7.32), you probably have to encode your URL to get this exploit to
+work.
+</p>
+
+<p><b>When done, submit your answers to the questions and your source code for
+both <code>exploit-ex.py</code> and <code>exploit-nx.py</code> to the
+<a href="https://6033.scripts.mit.edu:444/submit.cgi/">online submission site</a>.
+</b>
+
+</p><h4>V. More Fun</h4>
+
+<p><strong>Question 7 (optional):</strong>
+Removing <code>grades.txt</code> doesn't really help Ben Bitdiddle.
+Ben decides to raise his grade to an A from an F by exploiting
+the TA's <code>httpd-nx</code> web server.
+Can you modify <code>exploit-nx.py</code> to help Ben achieve this goal?
+Hint: you may find the <code>sed</code> command (with the
+<code>-i</code> option) useful.
+</p>
+
+<p><strong>Question 8 (optional):</strong>
+Ben's TA discovers some strange entries in the system log,
+by running the following command in the <em>top</em> window.
+</p><pre>  top% <font color="green">dmesg -T | grep httpd-nx</font>
+  [Mon Apr 15 10:10:10 2013] httpd-nx[1234]: segfault at deadbeef ... error 14
+</pre>
+Every time Ben runs <code>exploit-nx.py</code>,
+an <code>httpd-nx</code> process crashes,
+and the system adds one such segfault entry to the log.
+Can you improve <code>exploit-nx.py</code> to avoid such entries
+(i.e., do not crash <code>httpd-nx</code>)?
+Hint: fix the “beef” value.
+<p></p>
+
+<p>
+In real world, it's trickier to make your exploits work.
+For example,
+web servers don't give away critical information (e.g., the values of
+<code>reqpath</code> and <code>ebp</code>).
+Also, <a href="http://en.wikipedia.org/wiki/Buffer_overflow_protection">many techniques</a>
+have been deployed to defend against buffer overruns.
+If you want to learn more about systems security,
+take <a href="http://css.csail.mit.edu/6.858/">6.858</a>.
+</p>
+
+<!-- RULE: h-footer -->
+<hr>
+
+<table width="100%">
+<tbody><tr>
+<td align="left"><b>Go to <a href="http://web.mit.edu/6.033/www/index.shtml">6.033 Home Page</a></b>
+</td></tr></tbody></table>
+
+
+</body></html>
