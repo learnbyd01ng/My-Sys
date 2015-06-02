@@ -1,0 +1,916 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0077)http://www.cs.utexas.edu/~ans/classes/cs439/projects/shell_project/shell.html -->
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>CS439: Project 0</title>
+<style type="text/css"></style></head>
+
+<body>
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" type="text/css" href="./CS439_ Project 0_files/ans.css">
+
+  <title>CS439: Project 0</title>
+<meta name="keywords" content="Alison N. Smith Norman">
+
+
+
+
+<div class="interior-content">
+<!-- * MAIN TEXT * -->
+    
+ <font face="arial"> 
+
+      <!-- *NAV BAR* -->
+      <table width="100%" border="0" bgcolor="white" cellspacing="0" cellpadding="0" height="25" link="white">
+	<tbody><tr>
+	  <td width="120" align="center"><small><a href="http://www.cs.utexas.edu/~ans/classes/index.html" target="_top"><b>Home</b></a></small></td>
+
+	  <td width="120" align="center"><small><a href="http://www.cs.utexas.edu/~ans/classes/cs439/index.html" target="_top"><b>CS439</b></a></small></td>
+	</tr>
+      </tbody></table>
+
+
+<center>
+<p></p><h1><b>CS439: Principles of Computer Systems </b></h1><p></p>
+<p>
+</p><h2><b>Project 0<br></b></h2>
+<h3><b> Due: 11:59p Friday, February 13, 2015 </b></h3> 
+
+<p>
+Projects will be submitted electronically.<br>  Please refer to the turnin
+instructions at the end of this specification.
+</p></center>
+<hr>
+
+<p></p><h4>Introduction </h4><p></p>
+
+<p>The purpose of this assignment is to become more familiar with the
+concepts of process control and signalling. You'll do this by writing
+a simple Unix shell program that supports job control. </p>
+
+<hr>
+
+ <p></p><h4>General Overview of Unix Shells </h4><p></p>
+
+ <p>A <em>shell </em>is an interactive command-line interpreter that
+    runs programs on behalf of the user. A shell repeatedly prints a
+    prompt, waits for a <em>command line </em>on stdin, and then
+    carries out some action, as directed by the contents of the
+    command line. </p>
+
+    <p>The command line is a sequence of ASCII text words delimited by
+    whitespace. The first word in the command line is either the name
+    of a built-in command or the pathname of an executable file. The
+    remaining words are command-line arguments. If the first word is a
+    built-in command, the shell immediately executes the command in
+    the current process. Otherwise, the word is assumed to be the
+    pathname of an executable program. In this case, the shell forks a
+    child process and then loads and runs the program in the context
+    of the child. The child processes created as a result of
+    interpreting a single command line are known collectively as
+    a <em>job</em>.  In general, a job can consist of multiple child
+    processes connected by Unix pipes. </p>
+
+    <p>If the command line ends with an ampersand ”&amp;”,
+    then the job runs in the <em>background</em>, which means that the
+    shell does not wait for the job to terminate before printing the
+    prompt and awaiting the next command line. Otherwise, the job runs
+    in the <em>foreground</em>, which means that the shell waits for
+    the job to terminate before awaiting the next command line. Thus,
+    at any point in time, at most one job can be running in the
+    foreground. However, an arbitrary number of jobs can run in the
+    background. </p>
+
+<p>For example, typing the command line:
+</p><p><tt>msh&gt; jobs</tt> causes the shell to execute the built-in <tt>jobs</tt>
+command. 
+</p><p>
+Typing the command line:
+</p><p><tt>msh&gt; /bin/ls -l -d</tt> runs the <tt>ls</tt> program in the
+foreground. By convention, the shell ensures that when this program
+begins executing its main routine:
+</p><p><tt>int main(int argc, char *argv[])</tt> the <tt>argc</tt>
+and <tt>argv</tt> arguments have the following values: </p>
+<p>
+</p><ul>
+<li>
+   <tt>argc == 3</tt>
+</li>
+<li>
+    <tt>argv[0] == ‘‘/bin/ls’’</tt> 
+</li>
+<li>
+    <tt>argv[1]== ‘‘-l’’</tt> 
+</li>
+<li>
+    <tt> argv[2]== ‘‘-d’’ </tt>
+</li>
+</ul>
+<p>Alternatively, typing the command line </p>
+<p><tt>msh&gt; /bin/ls -l -d &amp; </tt>runs the <tt>ls</tt> program
+in the background. </p>
+
+<p>Unix shells support the notion of <em>job control</em>, which
+allows users to move jobs back and forth between background and
+foreground, and to change the process state (running, stopped, or
+terminated) of the processes in a job. Typing <tt>ctrl-c</tt> causes a
+SIGINT signal to be delivered to each process in the foreground
+job. The default action for SIGINT is to terminate the
+process. Similarly, typing <tt>ctrl-z</tt> causes a SIGTSTP signal to
+be delivered to each process in the foreground job. The default action
+for SIGTSTP is to place a process in the stopped state, where it
+remains until it is awakened by the receipt of a SIGCONT signal. When
+a job is stopped or terminated, the user receives a message indicating
+the state of the process and then a command prompt.
+
+</p><p> Unix shells also provide various built-in commands that support
+job control. These commands include: </p>
+<ul>
+<li><tt>jobs</tt>: List the running and stopped background jobs. 
+</li>
+<p>
+</p><li> <tt>bg &lt;job&gt;</tt>: Change a stopped background job to a
+running background job. 
+</li>
+<p>
+</p><li><tt>fg &lt;job&gt;</tt>: Change a stopped or running background
+job to a running in the foreground. 
+</li>
+<p>
+</p><li><tt>kill &lt;job&gt;</tt>: Terminate a job. <p></p>
+</li>
+</ul>
+<hr>
+<p></p><h4>Getting Started</h4><p></p>
+<p>We provide a file <a href="http://www.cs.utexas.edu/~ans/classes/cs439/projects/shell_project/shproj-handout.tar"><tt>shproj-handout.tar</tt></a> that contains a
+template for your program along with a number of useful helper
+functions. Get it from the class web page by either using the command:</p>
+<p>
+<tt>unix&gt; wget
+http://www.cs.utexas.edu/~ans/classes/cs439/projects/shell_project/shproj-handout.tar
+</tt>
+</p><p>
+or downloading in a browser.
+</p><p>
+Put the file <tt>shproj-handout.tar</tt> to the protected directory
+(the <em>project directory</em>) in which you plan to do your work.
+
+Then do the following: 
+</p><ol>
+<li>Type the command <tt>tar xvf shproj-handout.tar</tt> to expand the tarfile.
+<p>
+Once the command has finished expanding the archive, you should find
+the following files:
+</p><pre>Files:
+
+Makefile	# Compiles your shell program and runs the tests
+README		# This file
+msh.c		# A shell program that you will write and hand in
+mshref		# The reference shell binary.
+util.c/h        # Contains provided utilities
+jobs.c/h        # Contains job helper routines
+design_doc.txt  # Provide your answers to questions and explanations here
+
+#Files for Part 0
+fib.c           # Implement Fibonacci here
+psh.c           # Implement prototype shell here
+
+#Files for Part 1
+handle.c        # Implementation Needed
+mykill.c        # Implementation Needed
+
+# The remaining files are used to test your shell
+sdriver.pl	# The trace-driven shell driver
+trace*.txt	# The 16 trace files that control the shell driver
+mshref.out 	# Example output of the reference shell on all 16 traces
+
+# Little C programs that are called by the trace files
+myspin.c	# Takes argument <n> and spins for <n> seconds
+mysplit.c	# Forks a child that spins for <n> seconds
+mystop.c        # Spins for <n> seconds and sends SIGTSTP to itself
+myint.c         # Spins for <n> seconds and sends SIGINT to itself
+</n></n></n></n></n></pre>
+
+</li>
+<p>
+</p><li> Type the command <tt>make</tt> to compile and link some test routines. 
+</li>
+<p>
+</p><li> Type your team member names, UT EIDs, CS logins, and email
+addresses at the top of the README file.
+</li>
+<p>
+</p></ol>
+<hr>
+<p></p><h4>Part 0: fork/exec </h4><p></p>
+<p>In this phase of the project, you will learn about the <tt>fork</tt> and
+<tt>exec</tt> system calls that you will use in the rest of the project. </p>
+
+<p></p><h5>Part 0.1: Reading</h5><p></p>
+<p>Read every word of sections 3 and 4 of chapter 8 of Bryant and
+O’Hallaron. Also, read every word of this handout before you
+write any code. </p>
+
+<p></p><h5>Part 0.2: Fibonacci </h5><p></p>
+<p>Update fib.c so that if invoked on the command line with some
+integer argument <tt>n</tt>, where <tt>n</tt> is less than or equal to
+13, it recursively computes the
+nth <a href="http://en.wikipedia.org/wiki/Fibonacci_number">Fibonacci
+number</a>. (The numbers are counted from 0.) </p>
+<p>Example executions:
+</p><pre>unix&gt; fib 3 
+2 
+unix&gt; fib 10 
+55
+</pre>
+
+<p> The trick is that each recursive call must be made by a new
+process, so you will call <tt>fork()</tt> and then have the new child process
+call <tt>doFib()</tt>. </p>
+
+<p>The parent must wait for the child to complete, and the child must
+pass the result of its computation to its parent.
+</p><p>
+You may modify <tt>doFib()</tt>, but you may not modify the number of
+parameters it accepts or its return value.
+
+
+</p><p></p><h5>Part 0.3: Fork/Exec </h5><p></p>
+
+<p>The <tt>fork</tt> system call creates a child process that is nearly
+identical to the parent. The <tt>exec</tt> call replaces the state of the
+currently running process with a new state to start running a new
+program in the current process. </p>
+
+<p>Your job is to create a prototype of the shell you will be creating
+in Part 2. 
+
+</p><p>We have provided psh.c, which provides framework for your shell,
+and util.h/util.c which provides some helper functions. Read these
+files. </p>
+
+<p>This prototype waits for a line of input. If the line is
+“quit”, it exits. Otherwise, it parses the line and
+attempts to execute the program at the path specified by the first
+word with the arguments specified by the remaining words. It waits for
+that job to finish. Then it waits for the next line of input. </p>
+
+
+<ul>
+  <li>
+    <p>The prompt should be the string <tt>psh&gt;</tt>. </p>
+</li>
+<p>
+  </p><li>
+    <p>The command line typed by the user should consist of a name and
+    zero or more arguments, all separated by one or more spaces. If
+    name is a built-in command, then <tt>psh</tt> should handle it
+    immediately and wait for the next command
+    line. Otherwise, <tt>psh</tt> should assume that name is the path
+    of an executable file, which it loads and runs in the context of a
+    child process.  Your shell waits for that job to finish, and then
+    it waits for the next line of input.  (In this context, the
+    term <em>job </em> refers to this child process.)
+
+</p><p>For example, </p>
+<p><tt>psh&gt; /bin/ls -l -d </tt> </p><p> 
+
+should run the <tt>ls</tt> program in the foreground. </p>
+
+</li>
+<p>
+</p><li>
+Your shell should implement one built-in command: <tt>quit</tt>. If
+the user types <tt>quit</tt>, your shell should exit. <p></p>
+</li>
+<p></p><li>For now, all commands and jobs are executed in the foreground.
+You also can assume that jobs execute until they exit; you don’t
+need to worry about signal handling (again, for now). <p></p>
+</li>
+</ul>
+
+<p>Update the file psh.c by implementing the
+functions <tt>eval()</tt>, which the <tt>main()</tt> function calls to
+process one line of input, and builtin <tt>cmd()</tt>, which
+your <tt>eval()</tt> function should call to parse and process the
+built-in <tt>quit</tt> command. (Later in this project, you will extend the
+built-in command function to handle other built-in commands.) </p>
+
+<p></p><h5>Hints for Part 0: fork/exec</h5><p></p>
+<ul>
+<li>
+    The <tt>waitpid</tt>, <tt>fork</tt>, and <tt>exec*</tt> functions
+    will come in very handy.  Use <tt>man</tt> to learn about them.
+    (Remember, you can use <tt>man man</tt> to learn
+    about <tt>man</tt>!)
+</li>
+<p>
+</p><li> The <tt>WEXITSTATUS</tt> macro described in the <tt>waitpid</tt>
+man page may also be useful.
+</li>
+<p>
+</p><li> Recall that C does not have strings.  Read more about string
+handling in C
+in <a href="http://www.eskimo.com/~scs/cclass/notes/sx8.html">these
+notes</a>.
+</li>
+<p>
+</p></ul>
+
+
+<hr>
+
+<p></p><h4>Part 1: Signal Handling</h4>
+<p>
+</p><h5>Part 1.1: Reading </h5><p></p>
+<p>Read every word of section 5 of chapter 8 of Bryant and
+O’Hallaron. Examine the code for the <tt>Signal()</tt> function in
+util.c. </p>
+
+<p></p><h5>Part 1.2: Signal Handling </h5><p></p>
+<p>Write a program in handle.c that first uses the <tt>getpid()</tt>
+system call to find its process ID, then prints that ID, and finally
+loops continuously, printing “Still here\n” once every
+second. Set up a signal handler so that if you hit <tt>ˆc</tt>
+(<tt>ctrl-c</tt>), the program prints “Nice try.\n” to the
+screen and continues to loop. </p>
+
+<p><strong>Note: </strong>The <tt>printf()</tt> function is technically unsafe
+to use in a signal handler. A safer way to print the message is to
+call:
+</p><pre>ssize_t bytes; 
+const int STDOUT = 1; 
+bytes = write(STDOUT, "Nice try.\n", 10); 
+if(bytes != 10) 
+   exit(-999);
+</pre>
+<p><strong>Note: </strong>You should use the <tt>nanosleep()</tt>
+library call rather than the <tt>sleep()</tt> call so that you can
+maintain your 1-second interval between “Still here”
+messages no matter how quickly the user hits <tt>ˆc</tt>. </p>
+
+<p>You can terminate this program using <tt>kill -9</tt>. For example, if the
+process ID is 4321:
+</p><p>
+<tt> unix&gt; kill -9 4321 </tt>
+</p><p>
+Since <tt>handle</tt> has control of your current terminal window,
+you'll need to execute the <tt>kill</tt> command from another window
+on the same machine.
+</p><p></p><h5>Part 1.3: Signal Sending </h5><p></p>
+
+<p>Update the program from Part 1.2 to catch the SIGUSR1 signal, print
+“exiting”, and exit with status equal to 1. </p>
+
+<p>Now write a program mykill.c that takes a process ID as an argument
+and that sends the SIGUSR1 signal to the specified process ID.  </p>
+<p>For example:
+</p><pre> 
+unix&gt;./handle 
+4321  
+Still here  
+Still here  
+Still here                               unix&gt;./mykill 4321  
+exiting                                  unix&gt;
+unix&gt;
+</pre>
+The stub code is provided for you.
+
+<p> </p><h5>Part 1.4: Signal Mechanics </h5><p></p>
+
+<p> In this section, you will take a look at how signals are
+implemented by inspecting the assembly code associated with your
+program and with the signal call. There are questions in the design
+document for you to answer regarding your program's behavior in the
+presence of signals.
+
+</p><p> If you compile a C program with the <tt>-S</tt> flag, the compiler outputs
+the assembly language corresponding the the code it would generate for
+the program. You can then use <tt>cat</tt> to view the output.
+</p><p>For example: </p>
+<pre>unix&gt; gcc -S handle.c 
+unix&gt; cat handle.s 
+...
+</pre>
+<p>
+</p><p> In the gdb debugger, you can see the assembly code for a function.
+First, recompile your program using the following commands: </p>
+<pre>gcc -Wall -g   -c -o handle.o handle.c
+gcc -Wall -g handle.o util.o -o handle
+</pre>
+(Note that these commands assume that <tt>util.o</tt> exists.  If you receive an
+error saying that it doesn't exist, run <tt>make</tt> first and then re-execute
+the above commands.)
+<p>
+Then execute <tt>gdb</tt> as follows:
+</p><pre>unix&gt; gdb handle 
+(gdb) disassemble main 
+Dump of assembler code for function main: 
+0x0000000100000970 <main+0>: push %rbp 
+0x0000000100000971 <main+1>: mov %rsp,%rbp 
+0x0000000100000974 <main+4>: push %r12 
+0x0000000100000976 <main+6>: push %rbx 
+... 
+</main+6></main+4></main+1></main+0></pre>
+<p>In gdb, you can set a <em>breakpoint</em> for a function.  A breakpoint
+indicates a place where execution should stop so that you can inspect
+its state. </p>
+
+<pre>(gdb) break main 
+Breakpoint 1 at 0x10000097b: file handle.c, line 30. 
+(gdb) 
+</pre>
+
+<p>You can then <tt>step</tt> to the next C/C++ instruction or <tt>stepi</tt> to the
+next assembly instruction:
+</p><pre>(gdb) run
+Starting program: /u/ans/classes/cs439/projects/shproj/src/handle
+
+Breakpoint 1, main (argc=1, argv=0x7fff5fbff6e0) at handle.c:30 
+30 int pid = getpid(); 
+(gdb) step 
+31 printf("%d\n", pid); 
+(gdb) stepi
+0x0000000100000989 31 printf("%d\n", pid); 
+(gdb) stepi 
+0x000000010000098b 31 printf("%d\n", pid); 
+(gdb) 
+</pre>
+
+<p>Now, use gdb to pass a particular signal to your program so that
+you can understand what happens. You can tell gdb to pass a
+particular signal to your program this way:</p>
+
+<pre>(gdb) handle SIGUSR1 pass 
+Signal   Stop  Print  Pass to program  Description 
+SIGUSR1  Yes   Yes    Yes              User defined signal 1 
+(gdb) handle SIGUSR1 nostop 
+Signal   Stop  Print  Pass to program  Description 
+SIGUSR1  No    Yes    Yes              User defined signal 1 
+(gdb) <p></p>
+</pre>
+Note that <tt>handle</tt> here is a command to <tt>gdb&gt;</tt> and not a
+reference to your program of the same name.  Also note that
+it <i>passes</i> a signal sent to <tt>gdb</tt> on to the user process.
+You'll need to send a signal from outside <tt>gdb</tt>.  You can read
+more about signal handling in <tt>gdb</tt> in
+this <a href="http://sunsite.ualberta.ca/Documentation/Gnu/gdb-5.0/html_node/gdb_38.html">gdb
+documentation</a>.
+
+<p>Use these techniques to answer the questions in the design document
+relating to signal mechanics (Part 1).
+
+</p><hr>
+<p></p><h4>Part 2: Shell </h4><p></p>
+
+<p>In this phase of the project, you will implement a simple shell,
+<tt>msh</tt>. Your msh shell should have the following features: </p>
+
+<ul>
+<li>  The prompt should be the string “msh&gt; ”. 
+</li>
+<p>
+</p><li> The command line typed by the user should consist of a path to an
+executable file, <tt>name</tt>, and zero or more arguments, all
+separated by one or more spaces. If <tt>name</tt> is a built-in
+command, then <tt>msh</tt> should handle it immediately and wait for
+the next command line. Otherwise, <tt>msh</tt> should assume
+that <tt>name</tt> is the path of an executable file, which it loads
+and runs in the context of an initial child process. <!-- (In this context,
+the term <em>job </em>refers to this initial child process).-->
+</li>
+<p>
+</p><li>Typing <tt>ctrl-c</tt> or <tt>ctrl-z</tt> should cause a SIGINT or
+    SIGTSTP signal, whichever is appropriate, to be sent to the
+    current foreground job, <em>as well as any descendants of that
+    job</em> (e.g., any child processes that it forked). If there is
+    no foreground job, then the signal should have no effect. <p></p>
+</li>
+<p>
+</p><li> If the command line ends with an ampersand (&amp;),
+then <tt>msh</tt> should run the job in the background.  Otherwise, it
+should run the job in the foreground.
+</li>
+<p>
+</p><li> Each job can be identified by either a process ID (PID) or a job
+ID (JID), which is a positive integer assigned by <tt>msh</tt>.  JIDs
+should be denoted on the command line by the prefix
+<tt>%</tt>. For example, <tt>%5</tt> denotes JID 5, and
+<tt>5</tt> denotes PID 5. We have provided you with all of the
+routines you need for manipulating the job list.
+</li>
+<p>
+</p><li> <tt>msh</tt> should support the following built-in commands: 
+    <ul>
+      <li>
+        The <tt>quit</tt> command terminates the shell.
+      </li>
+      <li>
+        The <tt>jobs</tt> command lists all background jobs.
+      </li>
+      <li>
+        The <tt>bg &lt;job&gt;</tt> command
+        restarts <tt>&lt;job&gt;</tt> by sending it a SIGCONT signal,
+        and then runs it in the background. The <tt>&lt;job&gt;</tt>
+        argument can be either a PID or a JID.
+      </li>
+      <li>
+        The <tt>fg &lt;job&gt;</tt> command
+        restarts <tt>&lt;job&gt;</tt> by sending it a SIGCONT signal,
+        and then runs it in the foreground. The <tt>&lt;job&gt;</tt>
+        argument can be either a PID or a JID. <p></p>
+    </li></ul>
+  <p>
+  </p></li><li> <tt>msh</tt> should reap all of its zombie children. If any job
+  terminates because it receives a signal that it didn't catch, then
+  <tt>msh</tt> should recognize this event and print a message with
+  the job's PID and a description of the offending signal. <p></p>
+</li>
+<p>
+</p><li>msh need not support pipes (|) or I/O redirection (&lt; and &gt;).
+</li>
+<p>
+</p><li>
+If a process is stopped or terminated by a signal, <tt>msh</tt> should print that information to the screen.  Such as:
+<pre>Job [1] (26961) terminated by signal 2
+Job [1] (26963) stopped by signal 20
+</pre>
+</li>
+</ul>
+
+Looking at the msh.c (<em>mini shell</em>) file, you will see that it
+contains a functional skeleton of a simple Unix shell. To help you get
+started, we have already implemented the less interesting
+functions. Your assignment is to complete the remaining empty
+functions listed below. As a sanity check for you, we've listed the
+approximate number of lines of code for each of these functions in our
+reference solution (which includes lots of comments).
+
+<ul>
+  <li>
+    <p><tt>eval</tt>: Main routine that parses and interprets the command
+    line. [70 lines] </p>
+  </li>
+  <li>
+    <p><tt>builtin_cmd</tt>: Recognizes and interprets the built-in commands:
+    <tt>quit</tt>, <tt>fg</tt>, <tt>bg</tt>, and <tt>jobs</tt>. [25
+    lines] </p>
+  </li>
+  <li>
+    <p><tt>do_bgfg</tt>: Implements the <tt>bg</tt> and <tt>fg</tt>
+    built-in commands. [50 lines] </p>
+  </li>
+  <li>
+    <p><tt>waitfg</tt>: Waits for a foreground job to complete.  [20
+    lines] </p>
+  </li>
+  <li>
+    <p><tt>sigchld_handler</tt>: Catches SIGCHILD signals. [80 lines] </p>
+  </li>
+  <li>
+    <p><tt>sigint_handler</tt>: Catches SIGINT (ctrl-c) signals.  [15
+    lines] </p>
+  </li>
+  <li>
+    <p><tt>sigtstp_handler</tt>: Catches SIGTSTP (ctrl-z) signals.  [15
+    lines] </p>
+  </li>
+</ul>
+
+<p>Each time you modify your msh.c file, type <tt>make</tt> to
+recompile it. To run your shell, type msh to the command line: </p>
+<p>
+    <tt>unix&gt; ./msh
+
+    </tt></p><p><tt> msh&gt; <em>[type commands to your shell here] </em></tt>
+
+
+ </p><p></p><h5>Hints for Part 2: Shell</h5> <p></p>
+<ul>
+<p>
+</p><li>
+Use the trace files to guide the development of your shell. Starting
+with trace01.txt, make sure that your shell produces
+the <em>identical </em>output as the reference shell. Then move on to
+trace file trace02.txt, and so on.
+</li>
+<p>
+  </p><li>
+    As in other portions of this project,
+    the <tt>waitpid</tt>, <tt>kill</tt>, <tt>fork</tt>, <tt>execve</tt>, <tt>setpgid</tt>,
+    and <tt>sigprocmask</tt> functions will be useful.  The WUNTRACED
+    and WNOHANG options to <tt>waitpid</tt> will also be useful.
+  </li>
+  <p> 
+  </p><li>
+    Programs such as <tt>more</tt>, <tt>less</tt>, <tt>vi</tt>,
+    and <tt>emacs</tt> do strange things with the terminal
+    settings. Don't run these programs from your shell. Stick with
+    simple text-based programs such
+    as <tt>/bin/ls</tt>, <tt>/bin/ps</tt>, and
+    <tt>/bin/echo</tt>.
+  </li>
+<p>
+</p><li>
+When you implement your signal handlers, be sure to send SIGINT and
+SIGTSTP signals to the entire foreground process group, using
+<tt>-pid</tt> instead of <tt>pid</tt> in the argument to the
+<tt>kill</tt> function.  The sdriver.pl program tests for this error.
+</li>
+<p>
+</p><li>
+One of the tricky parts of the assignment is deciding on the
+allocation of work between the <tt>waitfg</tt> and <tt>sigchld_handler</tt> functions.
+We recommend the following approach: <p></p>
+<ul>
+<li>
+  In <tt>waitfg</tt>, use a busy loop around the <tt>sleep</tt> function.
+</li> 
+<li>
+  In <tt>sigchld_handler</tt>, use exactly one call to <tt>waitpid</tt>.
+</li>
+</ul>
+
+    <p>While other solutions are possible, such as
+calling <tt>waitpid</tt> in both <tt>waitfg</tt>
+and <tt>sigchld_handler</tt>, these can be very confusing. It is
+simpler to do all reaping in the handler.
+
+    </p><p>Note that you probably can do something simpler for the
+    prototype you build in part 1. Then, be ready to change how this
+    works when you get to part 3. </p>
+</li>
+<p>
+</p><li>
+ In <tt>eval</tt>, the parent must use <tt>sigprocmask</tt> to block
+ SIGCHLD signals before it forks the child, and then unblock these
+ signals, again using <tt>sigprocmask</tt>, after it
+ uses <tt>addjob</tt> to add the child to the job list.  Since
+ children inherit the blocked vectors of their parents, the child must
+ be sure to then unblock SIGCHLD signals before it execs the new
+ program. 
+
+    <p>The parent needs to block the SIGCHLD signals in this way in
+    order to avoid the race condition where the child is reaped by
+    <tt>sigchld_handler</tt> (and thus removed from the job
+    list) <em>before </em>the parent calls <tt>addjob</tt>. </p>
+</li>
+<p>
+</p><li>
+    When you run your shell from the standard Unix shell, your shell
+    is running in the foreground process group. If your shell then
+    creates a child process, by default that child will also be a
+    member of the foreground process group. Since
+    typing <tt>ctrl-c</tt> sends a SIGINT to every process in the
+    foreground group, typing <tt>ctrl-c</tt> will send a SIGINT to
+    your shell, as well as to every process that your shell created,
+    which obviously isn't the behavior we want.
+
+    <p>Here is the workaround: After the fork, but before the exec,
+    the child process should call <tt>setpgid(0, 0)</tt>, which puts
+    the child in a new process group whose group ID is identical to
+    the child's PID. This ensures that there will be only one process,
+    your shell, in the foreground process group. When you
+    type <tt>ctrl-c</tt>, the shell should catch the resulting SIGINT
+    and then forward it to the appropriate foreground job (or more
+    precisely, the process group that contains the foreground
+    job). </p>
+
+</li>
+</ul>
+<hr>
+<p></p><h4>Checking Your Work </h4><p></p>
+
+<p>We have provided some tools to help you check your work. </p>
+
+<p>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<strong>Reference solution. </strong>The Linux
+    executable <tt>mshref</tt>, which was included in the tarball you
+    downloaded, is the reference solution for the shell.  Run this
+    program to resolve any questions you have about how your shell
+    should behave. <em>Your msh shell should emit output that is
+    identical to the reference solution </em>(except for PIDs, of
+    course, which change from run to run).
+
+</p><p>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<strong>Shell driver. </strong>  The sdriver.pl program executes a
+shell as a child process, sends it commands and signals as directed by
+a <em>trace file, </em>and captures and displays the output from the
+shell. 
+
+</p><p>Use the <tt>-h</tt> argument to find out the usage of sdriver.pl:
+</p><pre>unix&gt;./sdriver.pl -h
+Usage: sdriver.pl [-hv] -t &lt;trace&gt; -s &lt;shellprog&gt; -a &lt;args&gt; 
+Options: 
+ -h            Print this message  
+ -v            Be more verbose 
+ -t &lt;trace&gt;    Trace file 
+ -s &lt;shell&gt;    Shell program to test 
+ -a &lt;args&gt;     Shell arguments 
+ -g            Generate output for autograder 
+</pre>
+
+<p>We have also provided 16 trace files (trace{01-16}.txt) that you
+should use in conjunction with the shell driver to test the
+correctness of your shell. The lower-numbered trace files do very
+simple tests, and the higher-numbered tests do more complicated
+tests. </p>
+
+<p>You can run the shell driver on your shell using trace file
+trace01.txt (for instance) by typing: 
+</p><pre>unix&gt; ./sdriver.pl -t trace01.txt -s ./msh -a "-p"
+</pre>
+ The <tt>-a "-p"</tt> argument tells your shell not to emit
+a prompt. You could accomplish the same task with this command:
+<pre>unix&gt; make test01
+</pre>
+<p>
+Similarly, to compare your result with the reference shell, you can
+run the trace driver on the reference shell by typing: </p>
+<pre>unix&gt; ./sdriver.pl -t trace01.txt -s ./mshref -a "-p"
+</pre>
+or
+<pre>unix&gt; make rtest01
+</pre>
+
+<p>For your reference, mshref.out gives the output of the reference
+solution for all traces. <!--This might be more convenient for you than
+manually running the shell driver on all trace files. </p>-->
+
+</p><p>The neat thing about the trace files is that they generate the same
+output you would have gotten had you run your shell interactively
+(except for an initial comment that identifies the trace). For
+example: </p>
+<pre>unix&gt; make test15 
+./sdriver.pl -t trace15.txt -s ./msh -a "-p" 
+# 
+# trace15.txt - Putting it all together 
+# msh&gt; ./bogus 
+./bogus: Command not found. 
+msh&gt; ./myspin 10 
+Job (9721) terminated by signal 2 
+msh&gt; ./myspin 3 &amp; 
+[1] (9723) ./myspin 3 &amp; 
+msh&gt; ./myspin 4 &amp;
+[2] (9725) ./myspin 4 &amp; 
+msh&gt; jobs 
+[1] (9723) Running ./myspin 3 &amp; 
+[2] (9725) Running ./myspin 4 &amp; 
+msh&gt; fg %1 
+Job [1] (9723) stopped by signal 20 
+msh&gt; jobs 
+[1] (9723) Stopped ./myspin 3 &amp; 
+[2] (9725) Running ./myspin 4 &amp; 
+msh&gt; bg %3 
+%3: No such job 
+msh&gt; bg %1 
+[1] (9723) ./myspin 3 &amp; 
+msh&gt; jobs 
+[1] (9723) Running ./myspin 3 &amp; 
+[2] (9725) Running ./myspin 4 &amp; 
+msh&gt; fg %1 
+msh&gt; quit 
+unix&gt;
+</pre>
+
+<p>
+For tests 11 through 13, your output does not need to (and very likely
+won't) match exactly.  For your program to be correct, the state(s)
+of <tt>mysplit</tt> in your output must match exactly.
+</p><p>
+For tests 14 and 15, the PIDs listed in your output will likely differ
+from those in the provided output. As long as that is all that
+differs, your code will still be considered correct.
+
+</p><hr>
+
+    <p></p><h3>On Programming and Logistics</h3><p></p>
+
+The following guidelines should help smooth the process of delivering
+your project. You can help us (and yourself!) a great deal by observing the
+following:
+
+<p></p><h4>General </h4><p></p>
+
+<ol>
+<li>
+You <b>must</b> work in two-person teams on this project. Failure to
+do so will result in a 0 for the project. Once you have selected a
+partner:
+<ol>
+  <li> exchange first and last names, EIDs, and CS logins </li>
+  <li> fill out the README distributed with the project</li>
+  <li> register in Canvas as a Shell Group </li>
+</ol>
+You must follow
+the <a href="http://www.cs.utexas.edu/~ans/classes/cs439/pairprogramming.html"> pair programming
+guidelines </a> set forth for this class.</li>  <b>If you have trouble finding a
+partner, you must notify the course staff no later than one week before the
+project due date.</b>  We will then help you find a partner.
+<p>
+<b>Please see the <a href="http://www.cs.utexas.edu/~ans/classes/cs439/projects/GradingCriteria.html">Grading Criteria</a>
+to understand how failure to follow the pair programming guidelines OR
+fill out the README will affect your grade.</b>
+</p><li> You must follow the guidelines laid out in
+the <a href="http://www.cs.utexas.edu/~ans/classes/cs439/projects/CStyleGuide.html"> C Style Guide</a> or your will lose
+points.  This includes selecting reasonable names for your files and
+variables. </li>
+
+<li> This project will be graded on the UTCS public linux
+machines. Although you are welcome to do testing and development on
+any platform you like, we cannot assist you in setting up other
+environments, and you must test and do final debugging on the UTCS
+public linux machines. The statement "It worked on my machine" will
+not be considered in the grading process. </li>
+<li>Your solution shell will be tested for correctness using the same
+shell driver and trace files that are included in your project
+directory. Your shell should produce <strong>identical</strong> output
+on these traces as the reference shell, with only two exceptions: 
+<ul>
+<li> The PIDs can (and will) be different. 
+</li>
+<li> The output of the <tt>/bin/ps</tt> commands in trace11.txt,
+trace12.txt, and trace13.txt will be different from run to
+run. However, the running states of any mysplit processes in the
+output of the <tt>/bin/ps</tt> command should be identical.
+</li>
+</ul>
+We will grade your code by script, so any additional variations from the output
+provided by the reference shell will result in a 0 for that portion of the assignment.
+</li>
+<li>
+Your code <b>must</b> compile without any additions or adjustments, or
+you will receive a 0 for the correctness portion.</li>
+
+<li>
+You are encouraged to reuse <i><font color="#990000">your
+own</font></i> code that you might have developed in previous courses to
+handle things such as queues, sorting, etc.</li>
+
+<li>
+You are also encouraged to use code provided by a public library such
+as the GNU library.</li>
+
+<li>You may not look at the written work of any student other than
+your partner. This includes, for example, looking at another student's
+screen to help them debug, looking at another student's print-out,
+working with another student to sketch a high-level design on a
+white-board. See the syllabus for additional details.</li>
+
+<li>
+If you find that the problem is under specified, please make
+reasonable assumptions and document them in the README file.
+Any clarifications or revisions to the assignment will be posted to
+Piazza.</li>
+
+</ol>
+
+<p></p><h4>Submitting Your Work</h4><p></p>
+<ol>
+<li>
+After you finish your code, please use <tt>make turnin</tt> to create a
+compressed tarball for submission.  The filename format will be
+&lt;username&gt;_shell_project.tar.gz.  Then, upload the .tar.gz file to the
+<tt>Project 0 Correctness and Documentation</tt> assignment in Canvas.  <i>Only
+one member of the pair should perform the upload.</i>  Make sure you have
+included the necessary information in the README and placed your pair
+programming log in the project directory.</li>
+<li>
+Once you have completed your design document (<b>each student should
+        complete one individually</b>), please submit it to the <tt>Project 0
+	Design</tt> assignment in Canvas.
+ Make sure you have included your name, CS login, and UT EID in the design
+        document.</li>
+</ol>
+
+
+<p></p><h4>Grading</h4><p></p>
+<ol>
+<p>
+Code will be evaluated based on its correctness, clarity, and elegance
+according to the
+criteria <a href="http://www.cs.utexas.edu/~ans/classes/cs439/projects/GradingCriteria.html">here</a>. Strive for
+simplicity. Think before you code.
+</p><p>
+The most important factor in grading your code design and documentation will be code inspection
+and evaluation of the descriptions in the write-ups. Remember, if your
+code does not follow the standards, it is wrong. If your code is not
+clear and easy to understand, it is wrong.
+<!--<p>The second most important factor in grading your code will be an
+analysis its correctness.-->
+
+</p></ol>
+
+
+
+</font></div></body></html>
